@@ -136,7 +136,7 @@ struct TriggerRankView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
             } else {
-                Section(header: Text("你最近 \(store.flares.count) 次发作前的共同食物")) {
+                Section {
                     ForEach(Array(ranked.enumerated()), id: \.offset) { i, r in
                         HStack {
                             Text("\(i + 1).")
@@ -149,6 +149,8 @@ struct TriggerRankView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                } header: {
+                    Text("你最近 \(store.flares.count) 次发作前的共同食物")
                 } footer: {
                     Text("这是你自己的数据，不是通用建议。「对我相关的列表」比任何通用清单都有用（患者研究实证）。")
                 }

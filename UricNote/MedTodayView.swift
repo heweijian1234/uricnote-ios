@@ -68,8 +68,9 @@ struct MedTodayView: View {
         let log = MedLog(date: Date(), planRef: plan.id, taken: true, provenance: .recorded)
         store.medLogs.append(log)
         // 种子联动
-        if let s = store.seed, s.type == "med" {
+        if var s = store.seed, s.type == "med" {
             s.realStreak += 1
+            store.seed = s
             store.meta.seedVotesTotal += 1
         }
         store.save()
@@ -110,7 +111,7 @@ struct MedPlanEditor: View {
             Button("保存") {
                 let plan = MedPlan(
                     name: name, dose: dose, timesPerDay: times,
-                    reminderTimes: [Calendar.current.date(bySettingHour: 9, minute: 0, of: Date())!],
+                    reminderTimes: [Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!],
                     startDate: Date()
                 )
                 store.medPlans.append(plan)

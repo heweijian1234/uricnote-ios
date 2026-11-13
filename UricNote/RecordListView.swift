@@ -299,7 +299,7 @@ struct FoodEditor: View {
 
     var body: some View {
         Form {
-            Section("刚吃了/喝了什么？") {
+            Section {
                 TextField("自定义输入", text: $item)
                 ForEach(quickRed, id: \.self) { n in
                     Button {
@@ -322,6 +322,8 @@ struct FoodEditor: View {
                         Label(n, systemImage: "checkmark.circle").foregroundColor(.green)
                     }
                 }
+            } header: {
+                Text("刚吃了/喝了什么？")
             } footer: {
                 Text("只记「吃了什么」，不用称重算热量。红黄绿按嘌呤含量：红 >150mg/100g，黄 50-150，绿 <50（来源：ACR 2020 指南）。")
             }
@@ -354,7 +356,7 @@ struct WeightEditor: View {
 
     var body: some View {
         Form {
-            Section("这次体重（kg）") {
+            Section {
                 HStack {
                     TextField("例如 88.5", text: $kgText)
                         .keyboardType(.decimalPad)
@@ -369,6 +371,8 @@ struct WeightEditor: View {
                         dismiss()
                     }
                 }
+            } header: {
+                Text("这次体重（kg）")
             } footer: {
                 Text("减重是降尿酸最有效的生活方式干预（每减 5kg，尿酸平均降约 1）。每周一次就够。")
             }
