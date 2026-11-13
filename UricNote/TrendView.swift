@@ -136,7 +136,7 @@ struct TriggerRankView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
             } else {
-                Section("你最近 \(store.flares.count) 次发作前的共同食物") {
+                Section(header: Text("你最近 \(store.flares.count) 次发作前的共同食物")) {
                     ForEach(Array(ranked.enumerated()), id: \.offset) { i, r in
                         HStack {
                             Text("\(i + 1).")

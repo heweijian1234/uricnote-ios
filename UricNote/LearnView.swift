@@ -296,7 +296,7 @@ struct ChangelogView: View {
     var body: some View {
         List {
             ForEach(entries, id: \.version) { e in
-                Section("v\(e.version) · \(e.date)") {
+                Section(header: Text("v\(e.version) · \(e.date)")) {
                     ForEach(e.items, id: \.0) { item, fromFeedback in
                         HStack(alignment: .top, spacing: 8) {
                             Text(item).font(.callout)
