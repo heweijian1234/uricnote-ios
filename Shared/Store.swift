@@ -197,7 +197,8 @@ final class Store: ObservableObject {
 
     /// 最近化验值距目标差（mg/dL，正=未达标）
     var deltaToTarget: Double? {
-        readings.max { $0.date < $1.date }?.valueMgDl.map { $0 - 6.0 }
+        guard let last = readings.max(by: { $0.date < $1.date }) else { return nil }
+        return last.valueMgDl - 6.0
     }
 
     /// 复查倒计时天数
