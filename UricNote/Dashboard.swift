@@ -69,7 +69,7 @@ struct DashboardView: View {
     // 三数字（v9 措辞：无痛X天/距目标/复查倒计时）
     private var bigNumbers: some View {
         HStack(spacing: 12) {
-            bigNum(value: "\(store.flareFreeDays)", label: "无痛天数", footnote: flareFreeFootnote)
+            bigNum(value: "\(store.flareFreeDays)", label: "无痛天数", footnote: flareFootnote)
             bigNum(value: deltaText, label: "距目标", footnote: "目标 <6.0 mg/dL")
             bigNum(value: reviewText, label: "复查倒计时", footnote: "临床试验验证的节律")
         }
@@ -86,8 +86,6 @@ struct DashboardView: View {
     }
 
     // 三段递进（v9：正在路上→结晶在溶解→已控制）
-    private func flareFreeFootnote(_ : Void) -> String { "" }
-
     private var flareFootnote: String {
         let d = store.flareFreeDays
         if d < 30 { return "正在路上" }

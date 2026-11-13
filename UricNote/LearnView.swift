@@ -184,9 +184,6 @@ struct PurineListView: View {
 
     var body: some View {
         List {
-            if store.purineItems.isEmpty {
-                seedIntoStore()
-            }
             ForEach(filtered) { item in
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
@@ -205,15 +202,16 @@ struct PurineListView: View {
         }
         .searchable(text: $query, prompt: "搜食物，比如：啤酒 / 豆腐 / 猪肝")
         .navigationTitle("嘌呤食物库")
+        .onAppear {
+            if store.purineItems.isEmpty {
+                store.purineItems = PurineDatabase.seed
+                store.save()
+            }
+        }
     }
 
     private var filtered: [PurineItem] {
         store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
-    }
-
-    private func seedIntoStore() {
-        store.purineItems = PurineDatabase.seed
-        store.save()
     }
 
     private func circle(for level: String) -> some View {

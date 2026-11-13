@@ -78,8 +78,9 @@ struct MedTodayView: View {
     }
 
     private func stopPlan(_ plan: MedPlan) {
-        plan.active = false
-        plan.stopDate = Date()
+        guard let idx = store.medPlans.firstIndex(where: { $0.id == plan.id }) else { return }
+        store.medPlans[idx].active = false
+        store.medPlans[idx].stopDate = Date()
         store.save()
     }
 }
