@@ -37,14 +37,15 @@ struct OnboardingView: View {
             HStack(spacing: 12) {
                 Button("跳过") { finish() }
                     .foregroundColor(.secondary)
-                Button(step == 2 ? "开始使用" : (motivation != nil || step == 1 ? "下一步" : "下一步"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .background(step == 0 && motivation == nil ? Color.gray.opacity(0.3) : Color.accentColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .disabled(step == 0 && motivation == nil)
-                    .onTapGesture { next() }
+                Button(action: { next() }) {
+                    Text(step == 2 ? "开始使用" : "下一步")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(step == 0 && motivation == nil ? Color.gray.opacity(0.3) : Color.accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                .disabled(step == 0 && motivation == nil)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)

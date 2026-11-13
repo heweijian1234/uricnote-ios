@@ -160,9 +160,11 @@ struct DashboardView: View {
     }
 
     private func seedDone(_ seed: Seed) {
-        seed.realStreak += 1
+        var s = seed
+        s.realStreak += 1
+        if s.realStreak >= 14 { s.unlockedSecond = true }
+        store.seed = s
         store.meta.seedVotesTotal += 1
-        if seed.realStreak >= 14 { seed.unlockedSecond = true }
         store.save()
         // 即时庆祝（Fogg：1 秒内；v9 情绪激励）
         UricCelebrate.show("Done — that's today handled.")

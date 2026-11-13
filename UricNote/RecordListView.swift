@@ -278,8 +278,9 @@ struct WaterEditor: View {
 
     // 种子联动（v9：种子行为打卡自动计入）
     private func seedCheck(type: String) {
-        guard let s = store.seed, s.type == type else { return }
+        guard var s = store.seed, s.type == type else { return }
         s.realStreak += 1
+        store.seed = s
         store.meta.seedVotesTotal += 1
         store.save()
         UricCelebrate.show("That's the seed watered.")
@@ -376,8 +377,9 @@ struct WeightEditor: View {
     }
 
     private func seedCheck() {
-        guard let s = store.seed, s.type == "weigh" else { return }
+        guard var s = store.seed, s.type == "weigh" else { return }
         s.realStreak += 1
+        store.seed = s
         store.meta.seedVotesTotal += 1
         store.save()
     }
