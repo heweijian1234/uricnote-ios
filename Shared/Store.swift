@@ -187,12 +187,12 @@ final class Store: ObservableObject {
     }
 
     // ---- 核心派生（仪表盘三数字） ----
-    /// 无痛天数（最近一次发作结束或开始至今）
-    var flareFreeDays: Int {
-        let last = flares
-            .compactMap { $0.endDate ?? $0.startDate }
-            .max() ?? Date.distantPast
-        return Calendar.current.dateComponents([.day], from: last, to: Date()).day ?? 0
+    /// 无痛天数（最近一次发作结束或开始至今）；无发作记录 → nil（新用户不显示，防"天文数字"污染）
+    var flareFreeDays: Int? {
+        guard let last = flares
+            .compactMap({ $0.endDate ?? $0.startDate })
+            .max() else { return nil }
+        return Calendar.current.dateComponents([.day], from: last, to: Date()).day
     }
 
     /// 最近化验值距目标差（mg/dL，正=未达标）
@@ -207,9 +207,10 @@ final class Store: ObservableObject {
         return Calendar.current.dateComponents([.day], from: Date(), to: d).day
     }
 
-    /// "已控制"徽章双条件：无痛≥90天 + 尿酸达标
+    /// "已控制"徽章双条件：无痛≥90天 + 尿酸达标；前提=有发作记录史（新用户/纯化验用户不亮徽章——防污染误导）
     var wellControlled: Bool {
-        flareFreeDays >= 90 && (deltaToTarget.map { $0 < 0 } ?? false)
+        guard let d = flareFreeDays, !flares.isEmpty, !readings.isEmpty else { return false }
+        return d >= 90 && (deltaToTarget.map { $0 < 0 } ?? false)
     }
 
     /// 服药依从率（最近30天，只数 recorded+confirmed 语义上 confirmed 不投票——依从率用两类都有意义，报告区分标注）

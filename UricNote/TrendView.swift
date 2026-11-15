@@ -10,7 +10,7 @@ struct TrendView: View {
             List {
                 Section("三线趋势（真实可算指标）") {
                     trendRow(icon: "pills.fill", color: .blue, title: "服药依从率（30 天）", value: adherenceText)
-                    trendRow(icon: "sun.max", color: .orange, title: "无痛天数", value: "\(store.flareFreeDays) 天")
+                    trendRow(icon: "sun.max", color: .orange, title: "无痛天数", value: store.flareFreeDays.map { "\($0) 天" } ?? "—")
                     trendRow(icon: "drop.fill", color: .cyan, title: "今天喝水达标", value: waterText)
                 }
 
@@ -184,7 +184,7 @@ struct ChangeView: View {
 
             Section("你最近 90 天") {
                 changeRow("发作次数", current: "\(recent90Flares) 次", prior: prior90Flares > 0 ? "更早 90 天：\(prior90Flares) 次" : "开始记录后出现")
-                changeRow("无痛天数", current: "\(store.flareFreeDays) 天", prior: "无痛天数会随坚持增长")
+                changeRow("无痛天数", current: store.flareFreeDays.map { "\($0) 天" } ?? "—", prior: "记录第一次发作后开始计数")
                 if !store.weightLogs.isEmpty {
                     let first = store.weightLogs.min { $0.date < $1.date }?.kg ?? 0
                     let last = store.weightLogs.max { $0.date < $1.date }?.kg ?? 0
