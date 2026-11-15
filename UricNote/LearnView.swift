@@ -181,10 +181,28 @@ struct MythListView: View {
 struct PurineListView: View {
     @ObservedObject var store = Store.shared
     @State private var query = ""
+    // 🔴健哥令 2026-11-15：默认先看"能吃什么"（绿灯优先）——患者打开 food 库全是禁忌会心情糟糕/抗拒（v8 情绪设计：先给希望再给边界）
+    @State private var tab = 0   // 0=绿灯能吃 1=黄灯适量 2=红灯注意
 
     var body: some View {
         List {
-            ForEach(filtered) { item in
+            Picker("", selection: $tab) {
+                Text("✓ 能吃").tag(0)
+                Text("适量").tag(1)
+                Text("注意").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(Color.clear)
+
+            let items = filtered.sorted { $0.name < $1.name }
+            if items.isEmpty {
+                Text(tab == 0 ? "这个搜索词下没有低嘌呤推荐——换个词试试，或看看「注意」页（可能它确实要少吃）。" : "这个搜索词下没有记录。")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
+            }
+            ForEach(items) { item in
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         circle(for: item.level)
@@ -200,7 +218,7 @@ struct PurineListView: View {
                 }
             }
         }
-        .searchable(text: $query, prompt: "搜食物，比如：啤酒 / 豆腐 / 猪肝")
+        .searchable(text: $query, prompt: "搜食物，比如：鸡蛋 / 牛奶 / 啤酒")
         .navigationTitle("嘌呤食物库")
         .onAppear {
             if store.purineItems.isEmpty {
@@ -211,7 +229,10 @@ struct PurineListView: View {
     }
 
     private var filtered: [PurineItem] {
-        store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+        let byQuery = store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+        // 按选中的Tab过滤：绿灯/黄灯/红灯
+        let levelKey = ["green", "yellow", "red"][tab]
+        return byQuery.filter { $0.level == levelKey }
     }
 
     private func circle(for level: String) -> some View {
@@ -279,8 +300,65 @@ enum PurineDatabase {
         .init(name: "可乐（含糖）", uricPer100g: 2, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "蜂蜜", uricPer100g: 5, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "花生", uricPer100g: 79, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "豆腐（北）", uricPer100g: 68, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "豆干", uricPer100g: 75, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "扁豆", uricPer100g: 75, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "豌豆", uricPer100g: 76, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "猪肚", uricPer100g: 132, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "火腿", uricPer100g: 120, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "腰果", uricPer100g: 60, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "核桃", uricPer100g: 25, level: "green", sourceTag: "ACR 2020"),
+        // ===== 绿灯扩展（健哥令 11-15：能吃的要丰富——先看希望再看边界）=====
+        .init(name: "葡萄", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "梨", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "桃子", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "橙子", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "柚子", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "草莓", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "蓝莓", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "哈密瓜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "菠萝", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "芒果", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "红枣（鲜）", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "白菜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "生菜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "油麦菜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "空心菜", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "芹菜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "黄瓜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "冬瓜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "南瓜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "丝瓜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "茄子", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "青椒", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "白萝卜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "西红柿", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "西兰花", uricPer100g: 20, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "花菜", uricPer100g: 22, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "玉米", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "山药", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "芋头", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "藕", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "红薯", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "土豆", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "小米粥", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "燕麦", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "米饭", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "面条", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "馒头", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "低脂牛奶", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "脱脂酸奶", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "鸡蛋", uricPer100g: 2, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "蛋白（蛋清）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "樱桃", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "车厘子", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "柠檬水（无糖）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "白开水", uricPer100g: 0, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "淡茶水", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "咖啡（黑，无糖）", uricPer100g: 2, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "橄榄油", uricPer100g: 0, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "海蜇皮", uricPer100g: 18, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "海参（水发）", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
     ]
 }
 

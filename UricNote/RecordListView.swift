@@ -295,7 +295,7 @@ struct FoodEditor: View {
 
     private let quickRed = ["啤酒", "白酒", "海鲜", "动物内脏", "浓肉汤"]
     private let quickYellow = ["红肉", "豆腐", "豆浆", "果汁"]
-    private let quickGreen = ["鸡蛋", "低脂奶", "蔬菜", "樱桃", "水"]
+    private let quickGreen = ["鸡蛋", "低脂牛奶", "蔬菜", "樱桃", "水", "豆腐", "燕麦", "玉米", "苹果", "香蕉"]
 
     var body: some View {
         Form {
