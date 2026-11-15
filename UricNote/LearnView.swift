@@ -25,6 +25,17 @@ struct LearnView: View {
                     NavigationLink("嘌呤食物库") { PurineListView() }
                 }
 
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("UricNote v0.1.0").font(.caption.weight(.medium))
+                            Text("© 2026 WEI JIAN HE · 记录工具，不构成诊疗建议").font(.caption2).foregroundColor(.secondary)
+                            Text("数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验").font(.caption2).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+
                 Section("和你一起变好") {
                     NavigationLink("更新日志（用户反馈驱动）") { ChangelogView() }
                     Button {
