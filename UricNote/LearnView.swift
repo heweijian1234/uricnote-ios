@@ -36,6 +36,11 @@ struct LearnView: View {
                             Image(systemName: "envelope")
                         }
                     }
+                    Button("🔧 演示：断记确认（测试用）") {
+                        Store.shared.meta.lastOpenedAt = Calendar.current.date(byAdding: .hour, value: -50, to: Date())
+                        Store.shared.save()
+                    }
+                    .foregroundColor(.orange)
                     Button("给我们评分") {
                         // 只在用户主动点击时触发（iOS 365 天 3 次限制——不自动弹）
                         if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
@@ -360,6 +365,7 @@ enum PurineDatabase {
         .init(name: "馒头", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
         .init(name: "低脂牛奶", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "脱脂酸奶", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "酸奶", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
         .init(name: "鸡蛋", uricPer100g: 2, level: "green", sourceTag: "ACR 2020"),
         .init(name: "蛋白（蛋清）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "樱桃", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),

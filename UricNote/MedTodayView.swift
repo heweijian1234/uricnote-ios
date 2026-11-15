@@ -1,6 +1,7 @@
 import SwiftUI
+import UserNotifications
 
-// MARK: - 用药（计划管理+每日打卡+全屏提醒占位；提醒调度 v0.2 接 UNUserNotificationCenter）
+// MARK: - 用药（计划管理+每日打卡+本地通知提醒——P3 修复：健哥"经常忘吃药"核心痛点不能是占位）
 
 struct MedTodayView: View {
     @ObservedObject var store = Store.shared
@@ -82,6 +83,28 @@ struct MedTodayView: View {
         store.medPlans[idx].active = false
         store.medPlans[idx].stopDate = Date()
         store.save()
+        cancelMedReminder()
+    }
+
+    // P3 最小提醒实现：每天 9:00 本地通知（计划激活时注册/停用时取消）
+    func scheduleMedReminder() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "UricNote"
+            content.body = "Time for your urate medication — one tap to log it."
+            content.sound = .default
+            var comps = DateComponents()
+            comps.hour = 9; comps.minute = 0
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+            let req = UNNotificationRequest(identifier: "ur.med.daily", content: content, trigger: trigger)
+            center.add(req)
+        }
+    }
+
+    func cancelMedReminder() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["ur.med.daily"])
     }
 }
 
@@ -117,6 +140,7 @@ struct MedPlanEditor: View {
                 )
                 store.medPlans.append(plan)
                 store.save()
+                MedTodayView().scheduleMedReminder()
                 UricCelebrate.show("用药计划已建。")
                 dismiss()
             }

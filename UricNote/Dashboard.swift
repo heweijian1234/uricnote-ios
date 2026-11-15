@@ -88,6 +88,7 @@ struct DashboardView: View {
     // 三段递进（v9：正在路上→结晶在溶解→已控制）
     private var flareFootnote: String {
         guard let d = store.flareFreeDays else { return "" }
+        if d == 0 { return "从今天开始计数" }   // P1: 刚记完发作不嘲讽（v8 安抚）
         if d < 30 { return "正在路上" }
         if d < 90 { return "结晶在溶解" }
         return "已控制标准：90 天+达标"
