@@ -20,7 +20,14 @@ struct RecordListView: View {
                     Text(acuteMode ? "急性模式：只留最重要的" : "身体")
                 }
 
-                if !acuteMode {
+                if acuteMode {
+                    // 🔴11-16 健哥实测反馈3修复：急性模式此前把饮水/服药全藏了（文案说保留实际没保留）
+                    // 急性发作刚需三件：记发作（上方红钮）/多喝水/止痛药打卡
+                    Section("急性期三件事") {
+                        NavigationLink("饮水与尿色") { WaterEditor() }
+                        NavigationLink("止痛药打卡") { MedTodayView() }
+                    }
+                } else {
                     Section("化验与生活方式") {
                         NavigationLink("尿酸化验值") { UricReadingList() }
                         NavigationLink("饮水与尿色") { WaterEditor() }

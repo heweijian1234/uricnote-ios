@@ -67,11 +67,28 @@ struct DashboardView: View {
     }
 
     // 三数字（v9 措辞：无痛X天/距目标/复查倒计时）
+    // 🔴11-16 健哥实测反馈2修复：复查倒计时此前只显示"—"没入口设日期（footer语焉不详）
+    // 改：无日期时整卡变按钮引导去录化验值（化验值→自动排复查日=设计本意）
     private var bigNumbers: some View {
         HStack(spacing: 12) {
             bigNum(value: store.flareFreeDays.map { "\($0)" } ?? "—", label: "无痛天数", footnote: store.flareFreeDays == nil ? "记录第一次发作后开始计数" : flareFootnote)
             bigNum(value: deltaText, label: "距目标", footnote: "目标 <6.0 mg/dL")
-            bigNum(value: reviewText, label: "复查倒计时", footnote: "临床试验验证的节律")
+            if store.daysToReview == nil {
+                // 空态=可点击引导（刘小排填空题：什么人在什么场景——刚装App的人不知道复查日哪来）
+                NavigationLink {
+                    UricReadingEditor()
+                } label: {
+                    VStack(spacing: 4) {
+                        Text("去设置").font(.title.bold())
+                        Text("复查倒计时").font(.caption.weight(.medium))
+                        Text("录一次化验值自动排").font(.caption2).foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .buttonStyle(.plain)
+            } else {
+                bigNum(value: reviewText, label: "复查倒计时", footnote: "录化验值自动更新")
+            }
         }
     }
 
@@ -111,8 +128,24 @@ struct DashboardView: View {
     }
 
     // 今日待办条（种子行为打卡入口）
+    // 🔴11-16 健哥实测反馈1修复（导航复杂难上手）：新用户空态下种子/服药条全无=页面只有三张数字卡+一堆按钮
+    // 加首用引导卡：三步上手路径（录化验→记发作→看节律），照产品总宗旨"无脑用"
     private var todayTodos: some View {
         VStack(spacing: 8) {
+            if store.readings.isEmpty && store.flares.isEmpty {
+                // 新手三步卡（只在没有数据时出现——有了就自动消失）
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("刚开始？三步就上手", systemImage: "lightbulb")
+                        .font(.callout.weight(.semibold))
+                    Text("① 记一次化验值（尿酸多少）\n② 痛的时候记一次发作（3 秒）\n③ 每天喝够水，其他慢慢来")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(12)
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(12)
+            }
             if let seed = store.seed {
                 HStack {
                     Image(systemName: "leaf")
