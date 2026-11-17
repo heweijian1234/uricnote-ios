@@ -123,6 +123,15 @@ struct FoodDayLog: Identifiable, Codable {
     var provenance: Provenance = .recorded
 }
 
+// MARK: - 嘌呤食物库条目（v11 保留：LearnView 嘌呤库页仍用——174 条种子数据有效）
+struct PurineItem: Identifiable, Codable {
+    var id: UUID = UUID()
+    var name: String
+    var uricPer100g: Double        // 每100g嘌呤mg
+    var level: String              // red(>150) / yellow(50-150) / green(<50)
+    var sourceTag: String          // "ACR 2020" / "卫健委2024"
+}
+
 // MARK: - 食物库 v11（C13-C16 健哥质疑扩容后终版：证据判定注释齐全）
 struct FoodItem: Identifiable, Codable {
     var id: UUID = UUID()
@@ -259,6 +268,7 @@ final class Store: ObservableObject {
     @Published var sleepLogs: [SleepLog] = [] { didSet { save() } }
     @Published var foodDays: [FoodDayLog] = [] { didSet { save() } }
     @Published var weightLogs: [WeightLog] = [] { didSet { save() } }
+    @Published var purineItems: [PurineItem] = [] { didSet { save() } }
     @Published var profile = HealthProfile() { didSet { save() } }
     @Published var seed: Seed? { didSet { save() } }
     @Published var review = ReviewSchedule() { didSet { save() } }
@@ -282,6 +292,7 @@ final class Store: ObservableObject {
         if let d = try? JSONEncoder().encode(sleepLogs) { defaults.set(d, forKey: "ur.sleepLogs") }
         if let d = try? JSONEncoder().encode(foodDays) { defaults.set(d, forKey: "ur.foodDays") }
         if let d = try? JSONEncoder().encode(weightLogs) { defaults.set(d, forKey: "ur.weightLogs") }
+        if let d = try? JSONEncoder().encode(purineItems) { defaults.set(d, forKey: "ur.purineItems") }
         if let d = try? JSONEncoder().encode(profile) { defaults.set(d, forKey: "ur.profile") }
         if let d = try? JSONEncoder().encode(seed) { defaults.set(d, forKey: "ur.seed") }
         if let d = try? JSONEncoder().encode(review) { defaults.set(d, forKey: "ur.review") }
@@ -298,6 +309,7 @@ final class Store: ObservableObject {
         if let d = defaults.data(forKey: "ur.sleepLogs"), let x = try? JSONDecoder().decode([SleepLog].self, from: d) { sleepLogs = x }
         if let d = defaults.data(forKey: "ur.foodDays"), let x = try? JSONDecoder().decode([FoodDayLog].self, from: d) { foodDays = x }
         if let d = defaults.data(forKey: "ur.weightLogs"), let x = try? JSONDecoder().decode([WeightLog].self, from: d) { weightLogs = x }
+        if let d = defaults.data(forKey: "ur.purineItems"), let x = try? JSONDecoder().decode([PurineItem].self, from: d) { purineItems = x }
         if let d = defaults.data(forKey: "ur.profile"), let x = try? JSONDecoder().decode(HealthProfile.self, from: d) { profile = x }
         if let d = defaults.data(forKey: "ur.seed"), let x = try? JSONDecoder().decode(Seed.self, from: d) { seed = x }
         if let d = defaults.data(forKey: "ur.review"), let x = try? JSONDecoder().decode(ReviewSchedule.self, from: d) { review = x }
