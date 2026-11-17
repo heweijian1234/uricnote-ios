@@ -44,14 +44,21 @@ struct MedTodayView: View {
                 }
             }
 
-            Section("近 7 天") {
+            Section("近 7 天（点打卡记录可撤销）") {
                 ForEach(last7Days, id: \.self) { day in
-                    let taken = store.medLogs.contains { Calendar.current.isDate($0.date, equalTo: day, toGranularity: .day) && $0.taken }
+                    let log = store.medLogs.first { Calendar.current.isDate($0.date, equalTo: day, toGranularity: .day) && $0.taken }
                     HStack {
                         Text(day.formatted(date: .abbreviated, time: .omitted))
                         Spacer()
-                        Image(systemName: taken ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(taken ? .green : .secondary.opacity(0.4))
+                        if let l = log {
+                            Button {
+                                store.medLogs.removeAll { $0.id == l.id }   // D6/A4：记错可撤销
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                            }
+                        } else {
+                            Image(systemName: "circle").foregroundColor(.secondary.opacity(0.4))
+                        }
                     }
                 }
             }
@@ -68,14 +75,13 @@ struct MedTodayView: View {
         guard let plan = activePlan else { return }
         let log = MedLog(date: Date(), planRef: plan.id, taken: true, provenance: .recorded)
         store.medLogs.append(log)
-        // 种子联动
-        if var s = store.seed, s.type == "med" {
+        // 种子联动（毕业后的种子不再计）
+        if var s = store.seed, s.type == "med", !s.graduated, s.realStreak < 14 {
             s.realStreak += 1
             store.seed = s
             store.meta.seedVotesTotal += 1
         }
-        store.save()
-        UricCelebrate.show("Kept it simple, kept it going.")
+        UricCelebrate.show("记好了——今天也没断")   // D2：中文
     }
 
     private func stopPlan(_ plan: MedPlan) {
@@ -93,7 +99,7 @@ struct MedTodayView: View {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "UricNote"
-            content.body = "Time for your urate medication — one tap to log it."
+            content.body = "今天的药吃了吗？吃完来打个卡。"   // D2：中文文案
             content.sound = .default
             var comps = DateComponents()
             comps.hour = 9; comps.minute = 0
