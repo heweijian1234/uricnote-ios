@@ -510,13 +510,15 @@ struct HealthProfileEditor: View {
                 TextField("药物过敏（如：别嘌醇过敏）", text: Binding(get: { store.profile.drugAllergies ?? "" }, set: { store.profile.drugAllergies = $0.isEmpty ? nil : $0 }))
                 TextField("食物过敏", text: Binding(get: { store.profile.foodAllergies ?? "" }, set: { store.profile.foodAllergies = $0.isEmpty ? nil : $0 }))
             }
-            Section("家族史与基因") {
+            Section {
                 Picker("直系亲属有痛风吗", selection: Binding(get: { store.profile.familyGout ?? "不确定" }, set: { store.profile.familyGout = $0 })) {
                     ForEach(familyOptions, id: \.self) { Text($0).tag($0) }
                 }
                 Picker("HLA-B*5801 检测（别嘌醇基因筛查）", selection: Binding(get: { store.profile.hlaTested ?? "没查过" }, set: { store.profile.hlaTested = $0 })) {
                     ForEach(hlaOptions, id: \.self) { Text($0).tag($0) }
                 }
+            } header: {
+                Text("家族史与基因")
             } footer: {
                 Text("汉族人群 HLA-B*5801 携带率较高——别嘌醇超敏反应风险相关，指南建议用药前筛查。以上信息只进你的档案和门诊记录，App 不做任何诊断。")
             }

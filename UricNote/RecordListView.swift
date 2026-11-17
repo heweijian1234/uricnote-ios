@@ -463,14 +463,16 @@ struct WaterPage: View {
                     }
                 }
             }
-            Section("尿色自评（脱水信号，早午晚）") {
+            Section {
                 urinePicker("早", slot: \.morning)
                 urinePicker("午", slot: \.noon)
                 urinePicker("晚", slot: \.evening)
+            } header: {
+                Text("尿色自评（脱水信号，早午晚）")
             } footer: {
                 Text("没记的时段就空着——不猜。")
             }
-            Section("设置") {
+            Section {
                 Stepper("每杯容量：\(store.todayWater?.cupSizeMl ?? 250) ml（容器不一可改）", value: Binding(
                     get: { store.todayWater?.cupSizeMl ?? 250 },
                     set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v } }
@@ -479,6 +481,8 @@ struct WaterPage: View {
                     get: { store.meta.waterAutoFillActive },
                     set: { on in on ? store.enableWaterAutoFill() : store.disableWaterAutoFill() }
                 ))
+            } header: {
+                Text("设置")
             } footer: {
                 Text("开启后，没手记的日子自动按最近 7 天平均填，报告标「沿用」不算打卡。随时可关，关掉后恢复手记。")
             }
@@ -500,10 +504,10 @@ struct WaterPage: View {
     }
 
     @ViewBuilder
-    private func urinePicker(_ label: String, slot keyPath: KeyPath<UrineSlot, Int?>) -> some View {
+    private func urinePicker(_ label: String, slot slotIndex: Int) -> some View {
         Picker(label, selection: Binding(
-            get: { store.todayWater?[keyPath: keyPath] ?? 0 },
-            set: { v in setUrine(keyPath, v == 0 ? nil : v) }
+            get: { urineValue(slotIndex) ?? 0 },
+            set: { v in setUrine(slotIndex, v == 0 ? nil : v) }
         )) {
             Text("未记").tag(0)
             Text("浅黄（好）").tag(2)
@@ -513,13 +517,22 @@ struct WaterPage: View {
         }
     }
 
+    private func urineValue(_ slotIndex: Int) -> Int? {
+        guard let w = store.todayWater else { return nil }
+        switch slotIndex {
+        case 0: return w.urine.morning
+        case 1: return w.urine.noon
+        default: return w.urine.evening
+        }
+    }
+
     private func addCup() {
         let size = store.todayWater?.cupSizeMl ?? 250
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
             store.waterDays[i].cups.append(WaterCup(time: Date(), ml: size))
             seedCheck()
             let total = store.waterDays[i].totalMl
-            UricCelebrate("第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml")
+            UricCelebrate.show("第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml")
             if total >= store.waterDays[i].goalMl {
                 UricCelebrate.show("今天的水够了——水是最便宜的药")
             }
@@ -532,12 +545,12 @@ struct WaterPage: View {
         }
     }
 
-    private func setUrine(_ keyPath: KeyPath<UrineSlot, Int?>, _ v: Int?) {
+    private func setUrine(_ slotIndex: Int, _ v: Int?) {
         let today = Calendar.current.startOfDay(for: Date())
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: today) }) {
-            switch keyPath {
-            case \.morning: store.waterDays[i].urine.morning = v
-            case \.noon: store.waterDays[i].urine.noon = v
+            switch slotIndex {
+            case 0: store.waterDays[i].urine.morning = v
+            case 1: store.waterDays[i].urine.noon = v
             default: store.waterDays[i].urine.evening = v
             }
         }
@@ -549,11 +562,6 @@ struct WaterPage: View {
         store.seed = s
         store.meta.seedVotesTotal += 1
     }
-}
-
-// 简写便利（庆祝一行）
-private func UricCelebrate(_ text: String) {
-    UricCelebrate.show(text)
 }
 
 // MARK: - 饮食本体页（B3 重做：红区多选+场景+负面记录+自定义；不分早午晚）
@@ -574,13 +582,15 @@ struct FoodPage: View {
                     }
                 }
             }
-            Section("今天没碰高嘌呤？（负面记录很重要）") {
+            Section {
                 Button {
                     markNoTrigger()
                 } label: {
                     Label("今天没吃高嘌呤，记一笔 ✓", systemImage: "checkmark.circle")
                         .foregroundColor(.green)
                 }
+            } header: {
+                Text("今天没碰高嘌呤？（负面记录很重要）")
             } footer: {
                 Text("只记「吃了」会让排行虚高——没吃的日子也是数据。")
             }
@@ -691,7 +701,9 @@ struct SleepPage: View {
                         .font(.body.weight(.semibold)).foregroundColor(.accentColor)
                 }
             }
-            Section("近 14 天平均：\(avgBucket)") {}
+            Section {
+                Text("近 14 天平均：\(avgBucket)").font(.callout)
+            }
             Section("历史（左滑删除）") {
                 ForEach(store.sleepLogs.sorted { $0.night > $1.night }) { s in
                     HStack {
