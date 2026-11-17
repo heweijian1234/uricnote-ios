@@ -161,7 +161,7 @@ struct FlareEditorView: View {
                     TextField("止痛药名（记一次固定，如：布洛芬）", text: $painkillerName)
                 }
             }
-            Section("可选：发作结束后补") {
+            Section {
                 Toggle("对工作有影响吗", isOn: $showWorkImpact)
                 if showWorkImpact {
                     // D1 修复：影响程度独立变量，不再污染诱因备注
@@ -171,6 +171,8 @@ struct FlareEditorView: View {
                 }
                 TextField("诱因备注（比如：昨晚喝了啤酒）", text: $notes, axis: .vertical)
                     .lineLimit(2...4)
+            } header: {
+                Text("可选：发作结束后补")
             }
             Section {
                 Button(editing == nil ? "保存" : "保存修改") {
@@ -464,9 +466,9 @@ struct WaterPage: View {
                 }
             }
             Section {
-                urinePicker("早", slot: \.morning)
-                urinePicker("午", slot: \.noon)
-                urinePicker("晚", slot: \.evening)
+                urinePicker("早", slot: 0)
+                urinePicker("午", slot: 1)
+                urinePicker("晚", slot: 2)
             } header: {
                 Text("尿色自评（脱水信号，早午晚）")
             } footer: {
@@ -594,7 +596,7 @@ struct FoodPage: View {
             } footer: {
                 Text("只记「吃了」会让排行虚高——没吃的日子也是数据。")
             }
-            Section("碰到的高嘌呤（多选，不分早午晚）") {
+            Section {
                 ForEach(FoodLibrary.redZone) { item in
                     Button {
                         toggle(item.name)
@@ -608,10 +610,12 @@ struct FoodPage: View {
                         }
                     }
                 }
+            } header: {
+                Text("碰到的高嘌呤（多选，不分早午晚）")
             } footer: {
                 Text("红肉是中嘌呤——碰了就记，但请勿大量（每餐一两内，别当主菜）。")
             }
-            Section("今天吃的是一整场？（场景一键）") {
+            Section {
                 ForEach(FoodLibrary.scenes, id: \.name) { s in
                     Button {
                         addScene(s.name, auto: s.autoItems)
@@ -625,6 +629,8 @@ struct FoodPage: View {
                         }
                     }
                 }
+            } header: {
+                Text("今天吃的是一整场？（场景一键）")
             } footer: {
                 Text("火锅/烧烤点了自动带上关联红区项（汤底/红肉/啤酒）。")
             }

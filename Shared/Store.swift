@@ -272,8 +272,8 @@ final class Store: ObservableObject {
         askWaterAutoFillIfNeeded()
     }
 
-    // ---- 持久化（didSet 自动存；单次写入合并） ----
-    private func save() {
+    // ---- 持久化（didSet 自动存；外部手动调用兼容——meta 子字段改动不走 didSet） ----
+    func save() {
         if let d = try? JSONEncoder().encode(readings) { defaults.set(d, forKey: "ur.readings") }
         if let d = try? JSONEncoder().encode(flares) { defaults.set(d, forKey: "ur.flares") }
         if let d = try? JSONEncoder().encode(medPlans) { defaults.set(d, forKey: "ur.medPlans") }

@@ -15,7 +15,7 @@ struct MedTodayView: View {
     var body: some View {
         List {
             if let plan = activePlan {
-                Section("当前用药") {
+                Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(plan.name) \(plan.dose)")
                             .font(.body.weight(.semibold))
@@ -28,6 +28,8 @@ struct MedTodayView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(todayTaken)
+                } header: {
+                    Text("当前用药")
                 }
                 Section {
                     Button("停用这个药计划", role: .destructive) {
