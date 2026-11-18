@@ -11,7 +11,7 @@ struct LearnView: View {
                         VisionPageView()
                     } label: {
                         HStack {
-                            Image(systemName: "book.fill").foregroundColor(.accentColor)
+                            Image(systemName: "book.fill").foregroundColor(.brand)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("为什么是它").font(.body.weight(.medium))
                                 Text("核心功能、理念、期望——一页看懂").font(.caption).foregroundColor(.secondary)
@@ -37,32 +37,28 @@ struct LearnView: View {
                 }
 
                 Section("和你一起变好") {
-                    NavigationLink("更新日志（用户反馈驱动）") { ChangelogView() }
-                    Button {
-                        FeedbackHelper.open()
+                    // v11.1 #6：反馈独立一级页（健哥令：需要足够的用户反馈）
+                    NavigationLink {
+                        FeedbackPage()
                     } label: {
                         HStack {
-                            Text("给开发者留言（他本人就是高尿酸患者）")
-                            Spacer()
-                            Image(systemName: "envelope")
+                            Image(systemName: "envelope.circle.fill").foregroundColor(.brand)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("反馈与更新日志").font(.body.weight(.medium))
+                                Text("批评最有价值——每一条都会被认真读").font(.caption).foregroundColor(.secondary)
+                            }
                         }
                     }
                     Button("🔧 演示：断记确认（测试用）") {
                         Store.shared.meta.lastOpenedAt = Calendar.current.date(byAdding: .hour, value: -50, to: Date())
                         Store.shared.save()
                     }
-                    .foregroundColor(.orange)
+                    .foregroundColor(.warn)
                     Button("给我们评分") {
                         // 只在用户主动点击时触发（iOS 365 天 3 次限制——不自动弹）
-                        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-                           let window = scene.windows.first(where: { $0.isKeyWindow }) {
-                            let vc = SKStoreReviewController_dummy()
-                            _ = vc
-                            _ = window
-                        }
                         FeedbackHelper.requestReview()
                     }
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.brand)
                 }
             }
             .navigationTitle("了解")
@@ -71,9 +67,6 @@ struct LearnView: View {
 
     private func SKStoreStoreReview() {}
 }
-
-import StoreKit
-func SKStoreReviewController_dummy() -> Int { 0 }
 
 // MARK: - 愿景页（Onboarding 第3步同款+独立入口）
 
@@ -120,7 +113,7 @@ struct VisionPageView: View {
 
     private func visionRow(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundColor(.accentColor).frame(width: 22)
+            Image(systemName: icon).foregroundColor(.brand).frame(width: 22)
             Text(text).font(.callout)
         }
     }
@@ -191,7 +184,7 @@ struct MythListView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(Color(.systemGray6))
+                    .background(Color.cardBG)
                     .cornerRadius(14)
                 }
                 Text("以上为患者共识科普，不构成诊疗建议。具体用药请遵医嘱。")
@@ -475,7 +468,7 @@ struct ChangelogView: View {
                                     .font(.caption2)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.accentColor.opacity(0.12))
+                                    .background(Color.brand.opacity(0.12))
                                     .cornerRadius(6)
                             }
                         }

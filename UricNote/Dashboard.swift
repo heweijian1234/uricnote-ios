@@ -1,9 +1,9 @@
 import SwiftUI
 import UserNotifications
 
-// MARK: - Tab1 仪表盘 v11（B1 健哥裁定的"今日待办驾驶舱"框架）
-// 结构：断记横幅 → 状态层（已控制/三数字） → 健康档案卡（未填时） → 今日待办行（记完消失）
-//       → 查阅卡（建议饮食——健哥裁 C3 必须放仪表盘） → 事件型快捷区（记发作/记化验）
+// MARK: - Tab1 仪表盘 v11.1（待办驾驶舱 + TaskRing 圆形任务圈 + 记无痛 + 用药按次）
+// 结构：断记横幅 → 状态层（已控制/三数字/记无痛） → 健康档案卡（未填时） → 今日待办行（记完消失）
+//       → 常驻快捷区（喝水/饮食/吃药——健哥裁：天天用的长挂） → 查阅卡（中低嘌呤清单） → 事件型快捷区（发作/化验/体重）
 
 struct DashboardView: View {
     @ObservedObject var store = Store.shared
@@ -16,10 +16,12 @@ struct DashboardView: View {
                     if store.needsGapConfirm { gapBanner }
                     wellControlledBadge
                     bigNumbers
+                    painFreeConfirmRow   // v11.1 #9：记无痛（C 方案）
                     if !store.profile.isComplete { profileCard }
                     todayTodos       // 待办驱动：记完的行消失
-                    greenZoneCard    // 建议饮食查阅卡（C3）
-                    quickActions     // 事件型（发作/化验不每天发生，固定保留）
+                    dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷
+                    greenZoneCard    // 中低嘌呤清单查阅卡（v11.1 #2 改名）
+                    quickActions     // 事件型（发作/化验/体重）
                     recallAlarmCard  // 回忆闹钟设置卡（B6）
                 }
                 .padding()
@@ -45,7 +47,7 @@ struct DashboardView: View {
                 Image(systemName: "chevron.right").font(.caption)
             }
             .padding(12)
-            .background(Color.amber.opacity(0.15))
+            .background(Color.warn.opacity(0.15))
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
@@ -63,7 +65,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(Color.green.opacity(0.12))
+            .background(Color.success.opacity(0.12))
             .cornerRadius(16)
         }
     }
@@ -121,7 +123,7 @@ struct DashboardView: View {
     private var profileCard: some View {
         NavigationLink { HealthProfileEditor() } label: {
             HStack {
-                Image(systemName: "person.text.rectangle").foregroundColor(.teal)
+                Image(systemName: "person.text.rectangle").foregroundColor(.brand)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("健康档案").font(.callout.weight(.semibold))
                     Text("身高体重/年龄/现有疾病/过敏史——医生看记录先想知道这些")
@@ -131,7 +133,7 @@ struct DashboardView: View {
                 Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
             }
             .padding(12)
-            .background(Color.teal.opacity(0.08))
+            .background(Color.brand.opacity(0.08))
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
@@ -142,113 +144,178 @@ struct DashboardView: View {
         VStack(spacing: 8) {
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
-                todoRow(icon: "moon.fill", color: .indigo, title: "昨晚几点睡的？") {
+                todoRow(icon: "moon.fill", color: .brand, title: "昨晚几点睡的？") {
                     SleepQuickPicker()
                 }
             }
             // ② 喝水（A2：点一次记一杯，显示今日合计）
             if let w = store.todayWater, w.provenance != .estimated, w.totalMl == 0 {
-                todoRow(icon: "drop.fill", color: .cyan, title: "今天还没记水") {
+                todoRow(icon: "drop.fill", color: .water, title: "今天还没记水") {
                     WaterPage()
                 }
             }
-            // ③ 服药打卡
-            if store.medPlans.contains(where: { $0.active }),
-               !store.medLogs.contains(where: { Calendar.current.isDateInToday($0.date) && $0.taken }) {
-                todoRow(icon: "pills", color: .blue, title: "今天的药还没打卡") {
-                    MedTodayView()
-                }
+            // ③ 吃药打卡（v11.1 #5：一天 N 次出 N 次待办行）
+            ForEach(store.todayMedTodos.filter { !$0.done }, id: \.slot) { t in
+                medTodoRow(plan: t.plan, slot: t.slot)
             }
             // ④ 高嘌呤负面记录（B3：没碰也要记，防诱因排行虚高）
             if store.todayFood == nil {
-                todoRow(icon: "fork.knife", color: .orange, title: "今天碰高嘌呤了吗？没碰也记一下") {
+                todoRow(icon: "fork.knife", color: .warn, title: "今天碰高嘌呤了吗？没碰也记一下") {
                     FoodPage()
                 }
-            }
-            // ⑤ 习惯种子（B5：起步脚手架明示+毕业机制）
-            if let seed = store.seed, !seed.graduated {
-                seedRow(seed)
             }
             // 全部完成态（情绪出口：一天照顾好自己的可视化）
             if allDone {
                 HStack {
-                    Image(systemName: "checkmark.seal.fill").foregroundColor(.green)
+                    Image(systemName: "checkmark.seal.fill").foregroundColor(.success)
                     Text("今天的都记完了——照顾好自己的一天").font(.callout)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(12)
-                .background(Color.green.opacity(0.08))
+                .background(Color.success.opacity(0.08))
                 .cornerRadius(12)
             }
+        }
+    }
+
+    // v11.1 #5：常驻快捷区（喝水/饮食/吃药天天用——健哥裁长挂仪表盘）
+    private var dailyShortcuts: some View {
+        HStack(spacing: 10) {
+            NavigationLink {
+                WaterPage()
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "drop.fill").font(.title3).foregroundColor(.water)
+                    Text(waterShortcutText).font(.caption.weight(.medium))
+                    Text("喝水").font(.caption2).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.water.opacity(0.08))
+                .cornerRadius(14)
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                FoodPage()
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "fork.knife").font(.title3).foregroundColor(.warn)
+                    Text(foodShortcutText).font(.caption.weight(.medium))
+                    Text("饮食").font(.caption2).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.warn.opacity(0.08))
+                .cornerRadius(14)
+            }
+            .buttonStyle(.plain)
+            NavigationLink {
+                MedTodayView()
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "pills").font(.title3).foregroundColor(.brand)
+                    Text(medShortcutText).font(.caption.weight(.medium))
+                    Text("吃药").font(.caption2).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.brand.opacity(0.08))
+                .cornerRadius(14)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var waterShortcutText: String {
+        guard let w = store.todayWater else { return "—" }
+        if w.provenance == .estimated { return "沿用" }
+        return "\(w.totalMl)ml"
+    }
+    private var foodShortcutText: String {
+        guard let f = store.todayFood else { return "未记" }
+        if f.noTriggerToday { return "没碰 ✓" }
+        return f.items.isEmpty && f.scenes.isEmpty ? "未记" : "已记 ✓"
+    }
+    private var medShortcutText: String {
+        let todos = store.todayMedTodos
+        guard !todos.isEmpty else { return "—" }
+        let done = todos.filter { $0.done }.count
+        return "\(done)/\(todos.count)"
+    }
+
+    // 用药待办行（v11.1：N 次出 N 行，点击直打卡不进页面）
+    private func medTodoRow(plan: MedPlan, slot: Int) -> some View {
+        Button {
+            let log = MedLog(date: Date(), planRef: plan.id, taken: true, slot: slot, provenance: .recorded)
+            store.medLogs.append(log)
+            Haptic.success()
+            UricCelebrate.show("已记\(Store.medSlotLabel(slot))的药 ✓")
+        } label: {
+            HStack {
+                TaskRing(done: false, tint: .brand)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("记\(Store.medSlotLabel(slot))的药（\(plan.name) \(plan.dose)）").font(.callout)
+                    Text("点一下直接打卡").font(.caption2).foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(Color.cardBG)
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // v11.1 #9：记无痛（C 方案：自动算+确认权）
+    @ViewBuilder
+    private var painFreeConfirmRow: some View {
+        if store.canConfirmPainFreeToday {
+            Button {
+                store.confirmPainFreeToday()
+                Haptic.success()
+                UricCelebrate.show("已记录今天无痛 ✓")
+            } label: {
+                HStack {
+                    Image(systemName: "sun.max.fill").foregroundColor(.success)
+                    Text("记今天无痛").font(.callout.weight(.semibold))
+                    Spacer()
+                    Text("无痛 \(store.flareFreeDays ?? 0) 天").font(.caption).foregroundColor(.secondary)
+                }
+                .padding(12)
+                .background(Color.success.opacity(0.08))
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
         }
     }
 
     private var allDone: Bool {
         store.lastNightSleep != nil
             && (store.todayWater.map { $0.totalMl > 0 || $0.provenance == .estimated } ?? true)
-            && (!store.medPlans.contains(where: { $0.active })
-                || store.medLogs.contains(where: { Calendar.current.isDateInToday($0.date) && $0.taken }))
+            && store.todayMedTodos.allSatisfy { $0.done }
             && store.todayFood != nil
     }
 
-    // 种子行（B5：起步定位说明+毕业进度）
-    private func seedRow(_ seed: Seed) -> some View {
-        HStack {
-            Image(systemName: "leaf").foregroundColor(.green)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("习惯种子：\(seedTitle(seed.type))").font(.callout.weight(.medium))
-                Text("起步阶段脚手架（非永久任务）· 连续 \(seed.realStreak)/14 天").font(.caption2).foregroundColor(.secondary)
-            }
-            Spacer()
-            Button("打卡") { seedDone(seed) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-        }
-        .padding(12)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-
-    private func seedTitle(_ t: String) -> String {
-        switch t { case "water": return "每天喝一杯水"; case "med": return "每晚记一次药"; case "weigh": return "每周称一次体重"; default: return t }
-    }
-
-    // B5/C9：打卡情绪奖励（中文+进度感）；毕业机制（14 天庆祝隐退）
-    private func seedDone(_ seed: Seed) {
-        var s = seed
-        s.realStreak += 1
-        if s.realStreak >= 14 { s.unlockedSecond = true }
-        store.seed = s
-        store.meta.seedVotesTotal += 1
-        if s.realStreak == 14 {
-            s.graduated = true
-            store.seed = s
-            UricCelebrate.show("毕业了！14 天连续——这个习惯已经是你的了，种子光荣退役 🎉")
-        } else {
-            UricCelebrate.show("第 \(s.realStreak) 天 ✓ 还有 \(14 - s.realStreak) 天毕业")
-        }
-    }
-
-    // C3：建议饮食查阅卡（仪表盘常驻——健哥裁：这是用户打开 App 的理由）
+    // C3/v11.1 #2：中低嘌呤清单查阅卡（去"今天能吃什么"限制性措辞——引导不限制）
     private var greenZoneCard: some View {
         NavigationLink { FoodGuideView() } label: {
             HStack {
-                Image(systemName: "leaf.circle.fill").foregroundColor(.green)
+                Image(systemName: "leaf.circle.fill").foregroundColor(.success)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("今天能吃什么？").font(.callout.weight(.semibold))
-                    Text("中低嘌呤白名单+适量注意清单（点击查阅）").font(.caption2).foregroundColor(.secondary)
+                    Text("中低嘌呤清单").font(.callout.weight(.semibold))
+                    Text("放心吃与适量注意（点击查阅）").font(.caption2).foregroundColor(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
             }
             .padding(12)
-            .background(Color.green.opacity(0.08))
+            .background(Color.success.opacity(0.08))
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
     }
 
-    // 事件型快捷区（B1：不是每天发生的，固定保留两三个）
+    // 事件型快捷区（B1：不是每天发生的，固定保留）
     private var quickActions: some View {
         VStack(spacing: 10) {
             NavigationLink {
@@ -258,7 +325,7 @@ struct DashboardView: View {
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color.accentColor)
+                    .background(Color.danger)
                     .foregroundColor(.white)
                     .cornerRadius(14)
             }
@@ -266,12 +333,12 @@ struct DashboardView: View {
                 NavigationLink("记化验值") { UricReadingPage() }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(.systemGray6))
+                    .background(Color.cardBG)
                     .cornerRadius(12)
                 NavigationLink("记体重") { WeightEditor() }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(.systemGray6))
+                    .background(Color.cardBG)
                     .cornerRadius(12)
             }
         }
@@ -281,7 +348,7 @@ struct DashboardView: View {
     private var recallAlarmCard: some View {
         NavigationLink { RecallAlarmEditor() } label: {
             HStack {
-                Image(systemName: "alarm").foregroundColor(.purple)
+                Image(systemName: "alarm").foregroundColor(.brand)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("每晚回顾提醒").font(.callout.weight(.medium))
                     Text(store.recall.enabled
@@ -294,14 +361,14 @@ struct DashboardView: View {
                     .font(.caption).foregroundColor(.secondary)
             }
             .padding(12)
-            .background(Color(.systemGray6))
+            .background(Color.cardBG)
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
     }
 }
 
-// 待办行通用容器
+// 待办行通用容器（v11.1：TaskRing 圆形任务圈替代图标）
 struct todoRow<Dest: View>: View {
     let icon: String
     let color: Color
@@ -311,13 +378,13 @@ struct todoRow<Dest: View>: View {
     var body: some View {
         NavigationLink { dest() } label: {
             HStack {
-                Image(systemName: icon).foregroundColor(color)
+                TaskRing(done: false, tint: color)
                 Text(title).font(.callout)
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
             }
             .padding(12)
-            .background(Color(.systemGray6))
+            .background(Color.cardBG)
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
@@ -338,7 +405,7 @@ struct bigNum: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(Color(.systemGray6))
+        .background(Color.cardBG)
         .cornerRadius(14)
     }
 }
@@ -363,7 +430,7 @@ struct SleepQuickPicker: View {
                         Text(["23 点前", "23 点-24 点", "0 点-1 点", "1 点后"][b])
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color(.systemGray6))
+                            .background(Color.cardBG)
                             .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
@@ -376,34 +443,90 @@ struct SleepQuickPicker: View {
     }
 }
 
-// MARK: - 建议饮食查阅页（C3：仪表盘卡点进；绿区+黄区+证据注释）
+// MARK: - 中低嘌呤清单查阅页（v11.1 #2 改名去限制性措辞；#3 红区 8 分类+每项 ⓘ 来源）
 struct FoodGuideView: View {
     var body: some View {
         List {
-            Section("🟢 放心吃") {
+            Section("🟢 放心吃（中低嘌呤）") {
                 ForEach(FoodLibrary.greenZone) { f in
-                    foodRow(f)
+                    foodRow(f, tint: .success)
                 }
             }
             Section("🟡 适量注意") {
                 ForEach(FoodLibrary.yellowZone) { f in
-                    foodRow(f)
+                    foodRow(f, tint: .warn)
                 }
             }
-            Section("🔴 高嘌呤红区（记饮食里多选登记）") {
-                ForEach(FoodLibrary.redZone) { f in
-                    foodRow(f)
+            // v11.1 #3：红区 8 分类分组展示
+            ForEach(FoodLibrary.groups, id: \.header) { g in
+                Section {
+                    ForEach(g.items) { f in
+                        foodRow(f, tint: .danger)
+                    }
+                } header: {
+                    Text("🔴 \(g.header)")
                 }
             }
         }
-        .navigationTitle("今天能吃什么？")
+        .navigationTitle("中低嘌呤清单")
+        .toolbar {
+            NavigationLink {
+                FoodSourcePage()
+            } label: {
+                Label("来源", systemImage: "info.circle")
+            }
+        }
     }
 
-    private func foodRow(_ f: FoodItem) -> some View {
+    private func foodRow(_ f: FoodItem, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(f.name).font(.body.weight(.medium))
+            HStack(spacing: 6) {
+                Text(f.name).font(.body.weight(.medium)).foregroundColor(.primary)
+                // v11.1 #3：ⓘ 来源快捷入口（信任件）
+                NavigationLink {
+                    FoodSourcePage(highlight: f.source)
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundColor(.brand)
+                }
+                .buttonStyle(.plain)
+            }
             if let n = f.note { Text(n).font(.caption).foregroundColor(.secondary) }
+            Text("来源：\(f.source)").font(.caption2).foregroundColor(.secondary.opacity(0.7))
         }
+    }
+}
+
+// MARK: - 数据来源页（v11.1 #3：官方权威文献出处——信任件）
+struct FoodSourcePage: View {
+    var highlight: String? = nil   // 从食物项 ⓘ 进来时高亮对应来源
+
+    var body: some View {
+        List {
+            Section {
+                Text("每条食物分级都有出处——不替你决定吃不吃，只告诉你证据怎么说。")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+            ForEach(FoodSourceCatalog.all, id: \.name) { s in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(s.name).font(.body.weight(.semibold))
+                        if s.name == highlight {
+                            Text("当前条目来源").font(.caption2)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Color.brand.opacity(0.12))
+                                .foregroundColor(.brand)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text(s.desc).font(.caption).foregroundColor(.secondary)
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .navigationTitle("数据来源")
     }
 }
 
@@ -460,10 +583,11 @@ struct RecallAlarmEditor: View {
     }
 }
 
-// MARK: - 健康档案编辑（A6/C11：七基础+共病多选+过敏两栏+家族史+HLA）
+// MARK: - 健康档案编辑（A6/C11 + v11.1 #1 自填与不清楚）
 struct HealthProfileEditor: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
+    @State private var customCondition = ""
 
     private let conditionOptions = ["高血压", "糖尿病", "高血脂", "肾结石"]
     private let familyOptions = ["有", "无", "不确定"]
@@ -501,9 +625,36 @@ struct HealthProfileEditor: View {
                         HStack {
                             Text(c).foregroundColor(.primary)
                             Spacer()
-                            if store.profile.conditions.contains(c) { Image(systemName: "checkmark").foregroundColor(.accentColor) }
+                            if store.profile.conditions.contains(c) { Image(systemName: "checkmark").foregroundColor(.brand) }
                         }
                     }
+                }
+                // v11.1 #1：不清楚选项
+                Button {
+                    if store.profile.conditions.contains("不清楚") {
+                        store.profile.conditions.removeAll { $0 == "不清楚" }
+                    } else {
+                        store.profile.conditions = ["不清楚"]
+                    }
+                } label: {
+                    HStack {
+                        Text("不清楚").foregroundColor(.primary)
+                        Spacer()
+                        if store.profile.conditions.contains("不清楚") { Image(systemName: "checkmark").foregroundColor(.brand) }
+                    }
+                }
+                // v11.1 #1：自定义输入框
+                HStack {
+                    TextField("其他疾病自填（如：甲状腺问题）", text: $customCondition)
+                    Button("添加") {
+                        let v = customCondition.trimmingCharacters(in: .whitespaces)
+                        if !v.isEmpty && !store.profile.conditions.contains(v) {
+                            store.profile.conditions.removeAll { $0 == "不清楚" }
+                            store.profile.conditions.append(v)
+                        }
+                        customCondition = ""
+                    }
+                    .disabled(customCondition.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             Section("过敏史") {
@@ -549,7 +700,7 @@ struct GapConfirmView: View {
         VStack(spacing: 20) {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.largeTitle)
-                .foregroundColor(.amber)
+                .foregroundColor(.warn)
             Text("过去几天没有你的记录")
                 .font(.title3.bold())
             Text("这段时间服药正常吗？（只补服药打卡，水/饮食不受影响）")
@@ -584,7 +735,7 @@ struct GapConfirmView: View {
             Text(title)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color(.systemGray6))
+                .background(Color.cardBG)
                 .cornerRadius(12)
         }
         .buttonStyle(.plain)

@@ -74,7 +74,17 @@ struct MedLog: Identifiable, Codable {
     var date: Date
     var planRef: UUID
     var taken: Bool
+    var slot: Int? = nil   // 一天第几次（1=早 2=晚 3=午）；Optional=老数据无 key 不炸解码；nil 按 1 处理
     var provenance: Provenance = .recorded
+
+    init(date: Date, planRef: UUID, taken: Bool, slot: Int? = nil, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.date = date
+        self.planRef = planRef
+        self.taken = taken
+        self.slot = slot
+        self.provenance = provenance
+    }
 }
 
 // MARK: - 喝水 v11 重做（健哥 A2 设计：杯量自填/逐杯明细/早午晚尿色/凌晨自动入档/7天沿用）
@@ -132,61 +142,7 @@ struct PurineItem: Identifiable, Codable {
     var sourceTag: String          // "ACR 2020" / "卫健委2024"
 }
 
-// MARK: - 食物库 v11（C13-C16 健哥质疑扩容后终版：证据判定注释齐全）
-struct FoodItem: Identifiable, Codable {
-    var id: UUID = UUID()
-    var name: String
-    var level: String              // red(记录面板红区) / yellow(适量注意) / green(放心吃)
-    var note: String?              // 一句证据注释
-    var category: String           // 海鲜浓味/内脏/浓汤/酒/含糖饮料/红肉/蛋奶/主食/蔬果/饮品/争议
-}
-
-enum FoodLibrary {
-    // 记录面板（红区多选）——碰到才记 + "今天没吃"负面记录
-    static let redZone: [FoodItem] = [
-        .init(name: "沙丁鱼", level: "red", note: "嘌呤最高档", category: "海鲜浓味"),
-        .init(name: "凤尾鱼", level: "red", note: "嘌呤最高档", category: "海鲜浓味"),
-        .init(name: "秋刀鱼", level: "red", note: "高嘌呤", category: "海鲜浓味"),
-        .init(name: "贝类牡蛎", level: "red", note: "高嘌呤", category: "海鲜浓味"),
-        .init(name: "蟹", level: "red", note: "高嘌呤", category: "海鲜浓味"),
-        .init(name: "鱼子虾籽", level: "red", note: "嘌呤浓缩", category: "海鲜浓味"),
-        .init(name: "小鱼干", level: "red", note: "脱水浓缩嘌呤极高", category: "海鲜浓味"),
-        .init(name: "动物内脏（肝/肾/脑/肠肚）", level: "red", note: "高嘌呤经典雷区", category: "内脏"),
-        .init(name: "老火汤/浓肉汤", level: "red", note: "嘌呤溶于水，汤=浓缩液", category: "浓汤"),
-        .init(name: "啤酒", level: "red", note: "嘌呤+酒精双杀，痛风第一诱因", category: "酒"),
-        .init(name: "白酒", level: "red", note: "酒精抑制尿酸排泄", category: "酒"),
-        .init(name: "黄酒", level: "red", note: "酒精抑制尿酸排泄", category: "酒"),
-        .init(name: "可乐/含糖碳酸", level: "red", note: "果糖促生成抑排泄——男每周≥4杯风险+49%（2.5万人研究）", category: "含糖饮料"),
-        .init(name: "奶茶", level: "red", note: "果糖+奶精反式脂肪双重负担", category: "含糖饮料"),
-        .init(name: "果汁（含纯果汁）", level: "red", note: "去纤维后果糖浓缩吸收更快；卫健委2024指南明确避免", category: "含糖饮料"),
-        .init(name: "蜂蜜", level: "red", note: "果糖占比约50%，尽量不吃", category: "含糖饮料"),
-        .init(name: "猪牛羊红肉", level: "red", note: "中嘌呤但高频——请勿大量（健哥裁 C4 加提醒）", category: "红肉"),
-    ]
-    // 场景按钮（点了自动记红+关联项）
-    static let scenes: [(name: String, autoItems: [String])] = [
-        ("火锅", ["老火汤/浓肉汤"]),
-        ("烧烤", ["猪牛羊红肉", "啤酒"]),
-        ("海鲜自助", ["贝类牡蛎", "蟹"]),
-    ]
-    // 建议面板（仪表盘查阅卡，健哥裁 C3：必须放仪表盘）
-    static let greenZone: [FoodItem] = [
-        .init(name: "鸡蛋", level: "green", note: "低嘌呤优质蛋白", category: "蛋奶"),
-        .init(name: "低脂奶/酸奶", level: "green", note: "降尿酸证据（保护性）", category: "蛋奶"),
-        .init(name: "米饭/面条", level: "green", note: "低嘌呤主食放心吃", category: "主食"),
-        .init(name: "燕麦/玉米", level: "green", note: "低嘌呤粗粮", category: "主食"),
-        .init(name: "大部分蔬菜", level: "green", note: "植物嘌呤对痛风风险几乎无影响（2018后大队列）", category: "蔬果"),
-        .init(name: "樱桃", level: "green", note: "降发作风险证据（保护性）", category: "蔬果"),
-        .init(name: "苹果/香蕉", level: "green", note: "完整水果膳食纤维缓冲果糖，每天200-300g", category: "蔬果"),
-        .init(name: "咖啡", level: "green", note: "长期饮用降尿酸证据（不加糖奶精）", category: "饮品"),
-        .init(name: "淡茶", level: "green", note: "低嘌呤可饮，避免加糖加奶精", category: "饮品"),
-        .init(name: "面包/馒头", level: "green", note: "低嘌呤；发酵面食略高于米饭面条，正常量无碍", category: "主食"),
-    ]
-    static let yellowZone: [FoodItem] = [
-        .init(name: "豆腐/豆浆", level: "yellow", note: "2024卫健委指南可适量——健哥裁保守标黄", category: "争议"),
-        .init(name: "淡水鱼（草鱼/鲫鱼）", level: "yellow", note: "平稳期50-100g每周2-3次，急性期避开；吃肉不喝汤", category: "争议"),
-        .init(name: "菠菜/芦笋/蘑菇/菜花", level: "green", note: "老观念平反：植物嘌呤几乎不升痛风风险（2018后大队列）——跟证据走", category: "争议"),
-    ]
-}
+// 食物库本体（FoodItem/FoodLibrary/FoodSourceCatalog）已剥离至 Shared/FoodLibraryData.swift（v11.1 扩容）
 
 // MARK: - 体重（保留时间序列）+ 健康档案 v11（A6/C11：静态"是谁"+动态"变化"分离）
 struct WeightLog: Identifiable, Codable {
@@ -269,6 +225,7 @@ final class Store: ObservableObject {
     @Published var foodDays: [FoodDayLog] = [] { didSet { save() } }
     @Published var weightLogs: [WeightLog] = [] { didSet { save() } }
     @Published var purineItems: [PurineItem] = [] { didSet { save() } }
+    @Published var confirmedPainFreeDays: Set<Date> = [] { didSet { save() } }   // v11.1：记无痛确认日（C 方案）
     @Published var profile = HealthProfile() { didSet { save() } }
     @Published var seed: Seed? { didSet { save() } }
     @Published var review = ReviewSchedule() { didSet { save() } }
@@ -293,6 +250,7 @@ final class Store: ObservableObject {
         if let d = try? JSONEncoder().encode(foodDays) { defaults.set(d, forKey: "ur.foodDays") }
         if let d = try? JSONEncoder().encode(weightLogs) { defaults.set(d, forKey: "ur.weightLogs") }
         if let d = try? JSONEncoder().encode(purineItems) { defaults.set(d, forKey: "ur.purineItems") }
+        if let d = try? JSONEncoder().encode(confirmedPainFreeDays) { defaults.set(d, forKey: "ur.confirmedPainFreeDays") }
         if let d = try? JSONEncoder().encode(profile) { defaults.set(d, forKey: "ur.profile") }
         if let d = try? JSONEncoder().encode(seed) { defaults.set(d, forKey: "ur.seed") }
         if let d = try? JSONEncoder().encode(review) { defaults.set(d, forKey: "ur.review") }
@@ -310,6 +268,7 @@ final class Store: ObservableObject {
         if let d = defaults.data(forKey: "ur.foodDays"), let x = try? JSONDecoder().decode([FoodDayLog].self, from: d) { foodDays = x }
         if let d = defaults.data(forKey: "ur.weightLogs"), let x = try? JSONDecoder().decode([WeightLog].self, from: d) { weightLogs = x }
         if let d = defaults.data(forKey: "ur.purineItems"), let x = try? JSONDecoder().decode([PurineItem].self, from: d) { purineItems = x }
+        if let d = defaults.data(forKey: "ur.confirmedPainFreeDays"), let x = try? JSONDecoder().decode(Set<Date>.self, from: d) { confirmedPainFreeDays = x }
         if let d = defaults.data(forKey: "ur.profile"), let x = try? JSONDecoder().decode(HealthProfile.self, from: d) { profile = x }
         if let d = defaults.data(forKey: "ur.seed"), let x = try? JSONDecoder().decode(Seed.self, from: d) { seed = x }
         if let d = defaults.data(forKey: "ur.review"), let x = try? JSONDecoder().decode(ReviewSchedule.self, from: d) { review = x }
@@ -377,6 +336,27 @@ final class Store: ObservableObject {
         meta.waterAutoFillActive = false   // 关掉→明天起恢复手记（已沿用日保留 estimated 标记）
     }
 
+    // ---- v11.1：重置所有数据（测试专用；#if DEBUG 包 UI 入口，本函数保留以备远程调试） ----
+    func resetAllData() {
+        let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix("ur.") }
+        for k in keys { defaults.removeObject(forKey: k) }
+        readings = []
+        flares = []
+        medPlans = []
+        medLogs = []
+        waterDays = []
+        sleepLogs = []
+        foodDays = []
+        weightLogs = []
+        purineItems = []
+        confirmedPainFreeDays = []
+        profile = HealthProfile()
+        seed = nil
+        review = ReviewSchedule()
+        recall = RecallAlarm()
+        meta = AppMeta()   // onboardingDone=false → RootView 自动回 onboarding
+    }
+
     private func last7RecordedWaterDays(excludingToday: Bool) -> [WaterDay] {
         let today = Calendar.current.startOfDay(for: Date())
         return waterDays
@@ -429,6 +409,33 @@ final class Store: ObservableObject {
     // ---- B3：今天饮食（红区多选+负面记录） ----
     var todayFood: FoodDayLog? {
         foodDays.first { Calendar.current.isDate($0.day, inSameDayAs: Date()) }
+    }
+
+    // ---- v11.1：今天吃药待办（一天 N 次出 N 次；slot 1=早 2=晚 3=午，>2 显示"第 N 次"） ----
+    var todayMedTodos: [(plan: MedPlan, slot: Int, done: Bool)] {
+        guard let plan = medPlans.first(where: { $0.active }) else { return [] }
+        let n = max(1, plan.timesPerDay)
+        let todayLogs = medLogs.filter { Calendar.current.isDateInToday($0.date) && $0.taken && $0.planRef == plan.id }
+        return (1...n).map { slot in
+            let done = todayLogs.contains { ($0.slot ?? 1) == slot }
+            return (plan, slot, done)
+        }
+    }
+
+    static func medSlotLabel(_ slot: Int) -> String {
+        switch slot { case 1: return "早"; case 2: return "晚"; case 3: return "午"; default: return "第\(slot)次" }
+    }
+
+    // ---- v11.1：记无痛按钮可见条件（C 方案：有发作史+今天没记发作+今天未确认） ----
+    var canConfirmPainFreeToday: Bool {
+        guard !flares.isEmpty else { return false }
+        if flares.contains(where: { Calendar.current.isDateInToday($0.startDate) }) { return false }
+        let today = Calendar.current.startOfDay(for: Date())
+        return !confirmedPainFreeDays.contains(today)
+    }
+
+    func confirmPainFreeToday() {
+        confirmedPainFreeDays.insert(Calendar.current.startOfDay(for: Date()))
     }
 
     // ---- 断记确认（v11 D4 修复：逐日查重，已实测日不补） ----

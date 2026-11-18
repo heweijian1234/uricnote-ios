@@ -1,16 +1,13 @@
 import SwiftUI
 import UserNotifications
 
-// MARK: - 用药（计划管理+每日打卡+本地通知提醒——P3 修复：健哥"经常忘吃药"核心痛点不能是占位）
+// MARK: - 用药 v11.1（"当前使用药物药量"+按次打卡——一天 N 次出 N 次待办）
 
 struct MedTodayView: View {
     @ObservedObject var store = Store.shared
     @State private var showEditor = false
 
     private var activePlan: MedPlan? { store.medPlans.first(where: { $0.active }) }
-    private var todayTaken: Bool {
-        store.medLogs.contains { Calendar.current.isDateInToday($0.date) && $0.taken }
-    }
 
     var body: some View {
         List {
@@ -23,13 +20,25 @@ struct MedTodayView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    Button(todayTaken ? "今天已记 ✓" : "记今天已吃") {
-                        markToday()
+                    // v11.1：按次打卡（一天 N 次就 N 个按钮；全打完变完成态）
+                    if store.todayMedTodos.contains(where: { !$0.done }) {
+                        HStack(spacing: 10) {
+                            ForEach(store.todayMedTodos.filter { !$0.done }, id: \.slot) { t in
+                                Button {
+                                    markSlot(t.slot)
+                                } label: {
+                                    Label("记\(Store.medSlotLabel(t.slot))已吃", systemImage: "pills")
+                                        .font(.callout.weight(.semibold))
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    } else {
+                        Label("今天都记完了 ✓", systemImage: "checkmark.seal.fill")
+                            .foregroundColor(.success)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(todayTaken)
                 } header: {
-                    Text("当前用药")
+                    Text("当前使用药物药量")
                 }
                 Section {
                     Button("停用这个药计划", role: .destructive) {
@@ -40,32 +49,37 @@ struct MedTodayView: View {
                 }
             } else {
                 Section {
-                    Button("添加用药计划") { showEditor = true }
+                    Button("添加当前使用药物药量") { showEditor = true }
                 } footer: {
-                    Text("提醒+依从率组合才有效（RCT 实证：单提醒无效）。「觉得没必要吃」是停药首因——依从率曲线会给医生看，也是给你自己看的证据。")
+                    Text("填一次默认长期用，可随时改。提醒+依从率组合才有效（RCT 实证：单提醒无效）——依从率曲线会给医生看，也是给你自己看的证据。")
                 }
             }
 
             Section("近 7 天（点打卡记录可撤销）") {
                 ForEach(last7Days, id: \.self) { day in
-                    let log = store.medLogs.first { Calendar.current.isDate($0.date, equalTo: day, toGranularity: .day) && $0.taken }
+                    let logs = store.medLogs.filter { Calendar.current.isDate($0.date, equalTo: day, toGranularity: .day) && $0.taken }
                     HStack {
                         Text(day.formatted(date: .abbreviated, time: .omitted))
                         Spacer()
-                        if let l = log {
-                            Button {
-                                store.medLogs.removeAll { $0.id == l.id }   // D6/A4：记错可撤销
-                            } label: {
-                                Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
-                            }
-                        } else {
+                        if logs.isEmpty {
                             Image(systemName: "circle").foregroundColor(.secondary.opacity(0.4))
+                        } else {
+                            // 按次显示（一天2次=两个勾）
+                            HStack(spacing: 4) {
+                                ForEach(logs) { l in
+                                    Button {
+                                        store.medLogs.removeAll { $0.id == l.id }   // D6/A4：记错可撤销
+                                    } label: {
+                                        Image(systemName: "checkmark.circle.fill").foregroundColor(.success)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("用药")
+        .navigationTitle("当前使用药物药量")
         .sheet(isPresented: $showEditor) { MedPlanEditor() }
     }
 
@@ -73,17 +87,16 @@ struct MedTodayView: View {
         (0..<7).reversed().compactMap { Calendar.current.date(byAdding: .day, value: -$0, to: Date()) }
     }
 
-    private func markToday() {
+    private func markSlot(_ slot: Int) {
         guard let plan = activePlan else { return }
-        let log = MedLog(date: Date(), planRef: plan.id, taken: true, provenance: .recorded)
+        let log = MedLog(date: Date(), planRef: plan.id, taken: true, slot: slot, provenance: .recorded)
         store.medLogs.append(log)
-        // 种子联动（毕业后的种子不再计）
-        if var s = store.seed, s.type == "med", !s.graduated, s.realStreak < 14 {
-            s.realStreak += 1
-            store.seed = s
-            store.meta.seedVotesTotal += 1
+        Haptic.success()
+        if store.todayMedTodos.allSatisfy({ $0.done }) {
+            UricCelebrate.show("今天的药都记完了 ✓")
+        } else {
+            UricCelebrate.show("记好了——\(Store.medSlotLabel(slot))这次打卡完成")
         }
-        UricCelebrate.show("记好了——今天也没断")   // D2：中文
     }
 
     private func stopPlan(_ plan: MedPlan) {
@@ -101,7 +114,7 @@ struct MedTodayView: View {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "UricNote"
-            content.body = "今天的药吃了吗？吃完来打个卡。"   // D2：中文文案
+            content.body = "今天的药吃了吗？吃完来打个卡。"
             content.sound = .default
             var comps = DateComponents()
             comps.hour = 9; comps.minute = 0
@@ -127,7 +140,7 @@ struct MedPlanEditor: View {
 
     var body: some View {
         Form {
-            Section("药物名") {
+            Section {
                 Picker("常见药", selection: $name) {
                     ForEach(commonMeds, id: \.self) { Text($0).tag($0) }
                     Text("自定义").tag("自定义")
@@ -135,10 +148,16 @@ struct MedPlanEditor: View {
                 if name == "自定义" {
                     TextField("输入药名", text: $name)
                 }
+            } header: {
+                Text("药物名")
             }
-            Section("剂量") {
+            Section {
                 TextField("例如 40mg", text: $dose)
                 Stepper("每天 \(times) 次", value: $times, in: 1...3)
+            } header: {
+                Text("剂量")
+            } footer: {
+                Text("一天几次就打几次卡（早晚各一次就选 2 次）。")
             }
             Button("保存") {
                 let plan = MedPlan(
@@ -149,10 +168,10 @@ struct MedPlanEditor: View {
                 store.medPlans.append(plan)
                 store.save()
                 MedTodayView().scheduleMedReminder()
-                UricCelebrate.show("用药计划已建。")
+                UricCelebrate.show("已记录当前用药。")
                 dismiss()
             }
         }
-        .navigationTitle("添加用药")
+        .navigationTitle("添加当前使用药物药量")
     }
 }

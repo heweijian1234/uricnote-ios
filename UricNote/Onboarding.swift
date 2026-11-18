@@ -1,15 +1,16 @@
 import SwiftUI
 
-// MARK: - Onboarding 三步（v10：动机锚 → 习惯种子 → 愿景页，全可跳过）
+// MARK: - Onboarding v11.1（动机锚 → 健康档案引导 → 愿景页；种子步已取消）
+// v11.1：第2步从"习惯种子"改为"健康档案"引导（种子功能暂时下线，健哥裁）
 
 struct OnboardingView: View {
     @ObservedObject var store = Store.shared
     @State private var step = 0
     @State private var motivation: MotivationChoice?
-    @State private var seedType = "water"
-    @State private var seedAnchor = "早上起床后"
-
-    private let anchors = ["早上起床后", "早上刷牙后", "吃完晚饭后", "睡前"]
+    @State private var heightText = ""
+    @State private var weightText = ""
+    @State private var ageText = ""
+    @State private var gender = "男"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +18,7 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(0..<3) { i in
                     Circle()
-                        .fill(i <= step ? Color.accentColor : Color.gray.opacity(0.3))
+                        .fill(i <= step ? Color.brand : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
                 }
             }
@@ -27,7 +28,7 @@ struct OnboardingView: View {
 
             switch step {
             case 0: motivationStep
-            case 1: seedStep
+            case 1: profileStep
             default: visionStep
             }
 
@@ -38,10 +39,10 @@ struct OnboardingView: View {
                 Button("跳过") { finish() }
                     .foregroundColor(.secondary)
                 Button(action: { next() }) {
-                    Text(step == 2 ? "开始使用" : "下一步")
+                    Text(step == 2 ? "开始使用" : (step == 1 ? "保存并继续" : "下一步"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
-                        .background(step == 0 && motivation == nil ? Color.gray.opacity(0.3) : Color.accentColor)
+                        .background(step == 0 && motivation == nil ? Color.gray.opacity(0.3) : Color.brand)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                 }
@@ -72,11 +73,11 @@ struct OnboardingView: View {
                             .font(.body.weight(.medium))
                         Spacer()
                         if motivation == c {
-                            Image(systemName: "checkmark.circle.fill").foregroundColor(.accentColor)
+                            Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
                         }
                     }
                     .padding(16)
-                    .background(motivation == c ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+                    .background(motivation == c ? Color.brand.opacity(0.12) : Color.cardBG)
                     .cornerRadius(14)
                 }
                 .buttonStyle(.plain)
@@ -93,54 +94,52 @@ struct OnboardingView: View {
         }
     }
 
-    // 第2步：习惯种子（v9：只选一颗，Fogg 配方）
-    private var seedStep: some View {
+    // 第2步：健康档案引导（v11.1：替换原习惯种子步——A6 档案前置，越早填报告越完整）
+    private var profileStep: some View {
         VStack(spacing: 20) {
-            Text("先从一件最小的事开始")
+            Text("先认识一下你")
                 .font(.title2.bold())
-            Text("不用改变人生。选一颗「习惯种子」，小到最忙的一天也能做。")
+            Text("身高体重年龄性别——医生看记录先想知道这些。只存本机，可以以后再补。")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 10) {
-                seedCard(type: "water", title: "每天喝一杯水", subtitle: "最简单的开始")
-                seedCard(type: "med", title: "每晚记一次药", subtitle: "如果你在服药")
-                seedCard(type: "weigh", title: "每周称一次体重", subtitle: "减重是降尿酸的搭档")
+                HStack(spacing: 10) {
+                    TextField("身高 cm", text: $heightText).keyboardType(.numberPad)
+                    TextField("体重 kg", text: $weightText).keyboardType(.decimalPad)
+                }
+                .padding(12)
+                .background(Color.cardBG)
+                .cornerRadius(12)
+                HStack(spacing: 10) {
+                    TextField("年龄", text: $ageText).keyboardType(.numberPad)
+                    Picker("性别", selection: $gender) {
+                        Text("男").tag("男"); Text("女").tag("女"); Text("其他").tag("其他")
+                    }
+                    .pickerStyle(.menu)
+                }
+                .padding(12)
+                .background(Color.cardBG)
+                .cornerRadius(12)
             }
 
-            Picker("什么时候做", selection: $seedAnchor) {
-                ForEach(anchors, id: \.self) { Text($0).tag($0) }
-            }
-            .pickerStyle(.menu)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            Text("想填更全（疾病/过敏/家族史）可以之后在仪表盘的「健康档案」卡里补。")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 24)
     }
 
-    private func seedCard(type: String, title: String, subtitle: String) -> some View {
-        Button {
-            seedType = type
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.body.weight(.medium))
-                    Text(subtitle).font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-                if seedType == type {
-                    Image(systemName: "checkmark.circle.fill").foregroundColor(.accentColor)
-                }
-            }
-            .padding(14)
-            .background(seedType == type ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
-            .cornerRadius(14)
+    private func saveProfileIfFilled() {
+        if let h = Double(heightText), h > 0 { store.profile.heightCm = h }
+        if let w = Double(weightText), w > 0 { store.profile.weightKg = w }
+        if let a = Int(ageText), a > 0 { store.profile.age = a }
+        store.profile.gender = gender
+        if store.profile.heightCm != nil || store.profile.age != nil {
+            store.profile.isComplete = true
         }
-        .buttonStyle(.plain)
     }
 
     // 第3步：愿景页（v10 完整版——理由三条含"开发者本人就是高尿酸患者"）
@@ -191,7 +190,7 @@ struct OnboardingView: View {
     private func visionRow(icon: String, text: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
-                .foregroundColor(.accentColor)
+                .foregroundColor(.brand)
                 .frame(width: 22)
             Text(text).font(.callout)
         }
@@ -202,9 +201,7 @@ struct OnboardingView: View {
             if let m = motivation { store.meta.motivation = m }
             step = 1
         } else if step == 1 {
-            let s = Seed(type: seedType, anchorMoment: seedAnchor, startDate: Date())
-            store.seed = s
-            store.save()
+            saveProfileIfFilled()
             step = 2
         } else {
             finish()
@@ -212,11 +209,8 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        // 跳过也记录动机（若有），种子给默认水
+        // 跳过也记录动机（若有）
         if let m = motivation { store.meta.motivation = m }
-        if store.seed == nil {
-            store.seed = Seed(type: "water", anchorMoment: "早上起床后", startDate: Date())
-        }
         store.meta.onboardingDone = true
         store.meta.lastOpenedAt = Date()
         store.save()

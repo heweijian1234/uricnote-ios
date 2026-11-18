@@ -14,7 +14,7 @@ struct TrendView: View {
                     Section {
                         NavigationLink { HealthProfileEditor() } label: {
                             HStack {
-                                Image(systemName: "person.text.rectangle").foregroundColor(.teal)
+                                Image(systemName: "person.text.rectangle").foregroundColor(.brand)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(profileLine).font(.callout)
                                     Text("健康档案（点击修改）").font(.caption2).foregroundColor(.secondary)
@@ -24,10 +24,26 @@ struct TrendView: View {
                     }
                 }
                 Section("三线趋势（真实可算指标）") {
-                    trendRow(icon: "pills.fill", color: .blue, title: "服药依从率（30 天）", value: adherenceText)
-                    trendRow(icon: "sun.max", color: .orange, title: "无痛天数", value: store.flareFreeDays.map { "\($0) 天" } ?? "—")
-                    trendRow(icon: "moon.fill", color: .indigo, title: "近 14 天入睡（平均）", value: sleepAvgText)
-                    trendRow(icon: "drop.fill", color: .cyan, title: "今天喝水", value: waterText)
+                    trendRow(icon: "pills.fill", color: .brand, title: "服药依从率（30 天）", value: adherenceText)
+                    trendRow(icon: "sun.max", color: .warn, title: "无痛天数", value: store.flareFreeDays.map { "\($0) 天" } ?? "—")
+                    trendRow(icon: "moon.fill", color: .brand, title: "近 14 天入睡（平均）", value: sleepAvgText)
+                    trendRow(icon: "drop.fill", color: .water, title: "今天喝水", value: waterText)
+                }
+                // v11.1：坚持热力格（HabitKit 式——长期管理病的坚持度可视化）
+                Section {
+                    HeatGrid(levels: heatLevels)
+                    HStack(spacing: 12) {
+                        heatLegend(0, "未记录")
+                        heatLegend(1, "记 1 类")
+                        heatLegend(2, "记 2 类")
+                        heatLegend(3, "记满 3 类")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                } header: {
+                    Text("记录坚持（近 90 天）")
+                } footer: {
+                    Text("三类=吃药打卡/喝水/饮食（入睡也算）。格子只给坚持可视化——不评判漏掉的格子。")
                 }
                 Section {
                     NavigationLink { UricTrendDetailView() } label: {
@@ -37,7 +53,7 @@ struct TrendView: View {
                                 Text("化验值折线+目标线").font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "chart.line.uptrend.xyaxis").foregroundColor(.accentColor)
+                            Image(systemName: "chart.line.uptrend.xyaxis").foregroundColor(.brand)
                         }
                     }
                     NavigationLink { TriggerRankView() } label: {
@@ -47,7 +63,7 @@ struct TrendView: View {
                                 Text(triggerStatusText).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "sparkles").foregroundColor(.accentColor)
+                            Image(systemName: "sparkles").foregroundColor(.brand)
                         }
                     }
                     NavigationLink { ChangeView() } label: {
@@ -57,7 +73,7 @@ struct TrendView: View {
                                 Text("90 天 vs 更早——身体给你的答案").font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "arrow.up.right").foregroundColor(.accentColor)
+                            Image(systemName: "arrow.up.right").foregroundColor(.brand)
                         }
                     }
                 } header: {
@@ -134,6 +150,29 @@ struct TrendView: View {
             Text(value).font(.body.weight(.semibold)).foregroundColor(.secondary)
         }
     }
+
+    // v11.1：热力格数据聚合（吃药/喝水/饮食/入睡四类按日计数→0-3 档）
+    private var heatLevels: [Date: Int] {
+        var levels: [Date: Int] = [:]
+        func bump(_ d: Date) {
+            let day = Calendar.current.startOfDay(for: d)
+            levels[day, default: 0] += 1
+        }
+        for l in store.medLogs where l.taken { bump(l.date) }
+        for w in store.waterDays where w.provenance == .recorded && !w.cups.isEmpty { bump(w.day) }
+        for f in store.foodDays { bump(f.day) }
+        for s in store.sleepLogs { bump(s.night) }
+        return levels
+    }
+
+    private func heatLegend(_ level: Int, _ label: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(level == 0 ? Color.cardBG : Color.brand.opacity(level == 3 ? 1.0 : (level == 2 ? 0.65 : 0.35)))
+                .frame(width: 10, height: 10)
+            Text(label)
+        }
+    }
 }
 
 // 尿酸趋势大图（A5）
@@ -203,7 +242,7 @@ struct TriggerRankView: View {
                 Section {
                     ForEach(Array(ranked.enumerated()), id: \.offset) { i, r in
                         HStack {
-                            Text("\(i + 1).").font(.headline).foregroundColor(.accentColor)
+                            Text("\(i + 1).").font(.headline).foregroundColor(.brand)
                             Text(r.name)
                             Spacer()
                             Text("\(r.count) 次发作前 72h 内出现过")

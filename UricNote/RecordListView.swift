@@ -12,7 +12,7 @@ struct RecordListView: View {
             List {
                 Section("身体") {
                     NavigationLink { FlarePage() } label: {
-                        Label("发作", systemImage: "exclamationmark.triangle.fill").foregroundColor(.red)
+                        Label("发作记录", systemImage: "exclamationmark.triangle.fill").foregroundColor(.danger)
                     }
                     NavigationLink { UricReadingPage() } label: {
                         Label("尿酸化验值", systemImage: "list.clipboard")
@@ -20,25 +20,64 @@ struct RecordListView: View {
                 }
                 Section("生活方式") {
                     NavigationLink { WaterPage() } label: {
-                        Label("饮水与尿色", systemImage: "drop.fill").foregroundColor(.cyan)
+                        Label("饮水与尿色", systemImage: "drop.fill").foregroundColor(.water)
                     }
                     NavigationLink { FoodPage() } label: {
-                        Label("饮食（高嘌呤登记）", systemImage: "fork.knife").foregroundColor(.orange)
+                        Label("饮食（高嘌呤登记）", systemImage: "fork.knife").foregroundColor(.warn)
                     }
                     NavigationLink { SleepPage() } label: {
-                        Label("入睡时间", systemImage: "moon.fill").foregroundColor(.indigo)
+                        Label("入睡时间", systemImage: "moon.fill").foregroundColor(.brand)
                     }
                     NavigationLink { WeightPage() } label: {
-                        Label("体重", systemImage: "scalemass").foregroundColor(.teal)
+                        Label("体重", systemImage: "scalemass").foregroundColor(.success)
                     }
                 }
                 Section("用药") {
                     NavigationLink { MedTodayView() } label: {
-                        Label("服药计划与打卡", systemImage: "pills").foregroundColor(.blue)
+                        Label("当前使用药物药量", systemImage: "pills").foregroundColor(.brand)
                     }
                 }
+                #if DEBUG
+                Section("测试") {
+                    ResetDataButton()
+                }
+                #endif
             }
             .navigationTitle("记录")
+        }
+    }
+}
+
+// v11.1 #8：重置所有数据（测试专用——#if DEBUG，上架 Release 自动消失）
+struct ResetDataButton: View {
+    @ObservedObject var store = Store.shared
+    @State private var confirm1 = false
+    @State private var confirm2 = false
+    @State private var inputText = ""
+
+    var body: some View {
+        Button(role: .destructive) {
+            confirm1 = true
+        } label: {
+            Label("重置所有数据（测试用）", systemImage: "trash")
+        }
+        .alert("确定要清空全部记录吗？", isPresented: $confirm1) {
+            Button("取消", role: .cancel) {}
+            Button("继续", role: .destructive) { confirm2 = true }
+        } message: {
+            Text("所有发作/化验/饮水/饮食/档案数据将永久删除，不可恢复。")
+        }
+        .alert("最后确认", isPresented: $confirm2) {
+            TextField("输入 RESET 确认", text: $inputText)
+            Button("取消", role: .cancel) { inputText = "" }
+            Button("执行重置", role: .destructive) {
+                if inputText == "RESET" {
+                    store.resetAllData()
+                }
+                inputText = ""
+            }
+        } message: {
+            Text("输入 RESET（全大写）执行。")
         }
     }
 }
@@ -53,7 +92,7 @@ struct FlarePage: View {
             Section {
                 NavigationLink { FlareEditorView() } label: {
                     Label("记一次发作（3 秒）", systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                        .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             Section("发作历史（点一条可改，左滑删除）") {
@@ -76,7 +115,7 @@ struct FlarePage: View {
                 }
             }
         }
-        .navigationTitle("发作")
+        .navigationTitle("发作记录")
     }
 
     private func dateText(_ d: Date) -> String {
@@ -108,7 +147,6 @@ struct FlareEditorView: View {
     @State private var joints: Set<String> = []
     @State private var pain: Double = 0        // D5：默认不选（0=未选，保存前校验）
     @State private var canWalk = true
-    @State private var tookMedsToday: Bool? = nil   // A8：今天吃过药吗（泛指，三态）
     @State private var showPainkiller = false       // A8：止痛药默认收起
     @State private var tookPainkiller = false
     @State private var painkillerName = ""
@@ -127,7 +165,7 @@ struct FlareEditorView: View {
                         .font(.callout)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
-                        .background(joints.contains(j) ? Color.red.opacity(0.18) : Color(.systemGray6))
+                        .background(joints.contains(j) ? Color.danger.opacity(0.18) : Color.cardBG)
                         .cornerRadius(10)
                     }
                 }
@@ -135,7 +173,19 @@ struct FlareEditorView: View {
             }
             Section {
                 VStack(alignment: .leading) {
-                    Text(pain == 0 ? "疼痛程度：拖一下选" : "疼痛程度：\(Int(pain))/10 —— \(painAnchors[Int(pain)] ?? "")")
+                    HStack {
+                        Text(pain == 0 ? "疼痛程度：拖一下选" : "疼痛程度：\(Int(pain))/10 —— \(painAnchors[Int(pain)] ?? "")")
+                        Spacer()
+                        if pain > 0 {
+                            // v11.1 Daylio 式色彩编码：拖动时数值底色随程度变绿→红
+                            Text("\(Int(pain))")
+                                .font(.caption.bold())
+                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(Color.pain(Int(pain)).opacity(0.18))
+                                .foregroundColor(Color.pain(Int(pain)))
+                                .clipShape(Capsule())
+                        }
+                    }
                     Slider(value: $pain, in: 1...10, step: 1)
                         .onChange(of: pain) { _ in if pain == 0 { pain = 1 } }
                     if pain == 0 {
@@ -144,15 +194,9 @@ struct FlareEditorView: View {
                     }
                 }
                 Toggle("还能走路吗", isOn: $canWalk)
-                // A8：泛指用户自己的药，不点名类型不指导
-                Picker("今天吃过药吗", selection: $tookMedsToday) {
-                    Text("没记").tag(nil as Bool?)
-                    Text("吃了").tag(true as Bool?)
-                    Text("没吃").tag(false as Bool?)
-                }
-                .pickerStyle(.segmented)
+                // v11.1 #7：删"今天吃过药吗"（药打卡已独立成仪表盘待办行，不再重复采集）
             } header: {
-                Text("就这三件，3 秒记完")
+                Text("就这两件，3 秒记完")
             }
             Section("很痛才看这里（止痛药）") {
                 Toggle("用了止痛药", isOn: $showPainkiller)
@@ -193,7 +237,6 @@ struct FlareEditorView: View {
         joints = Set(e.joints)
         pain = Double(e.painPeak)
         canWalk = e.canWalk
-        tookMedsToday = e.tookMedsToday
         tookPainkiller = e.tookPainkiller ?? false
         showPainkiller = e.tookPainkiller != nil
         painkillerName = e.painkillerName ?? ""
@@ -207,7 +250,6 @@ struct FlareEditorView: View {
         if var e = editing, let idx = store.flares.firstIndex(where: { $0.id == e.id }) {
             // A4：编辑现有记录
             e.joints = Array(joints); e.painPeak = Int(pain); e.canWalk = canWalk
-            e.tookMedsToday = tookMedsToday
             e.tookPainkiller = showPainkiller ? tookPainkiller : nil
             e.painkillerName = showPainkiller && !painkillerName.isEmpty ? painkillerName : nil
             e.workImpact = showWorkImpact ? impactIdx : 0
@@ -219,7 +261,7 @@ struct FlareEditorView: View {
             let f = Flare(startDate: Date(), endDate: nil, joints: Array(joints), painPeak: Int(pain),
                           canWalk: canWalk, workImpact: showWorkImpact ? impactIdx : 0,
                           workImpactNote: showWorkImpact && !workImpactNote.isEmpty ? workImpactNote : nil,
-                          tookMedsToday: tookMedsToday,
+                          tookMedsToday: nil,   // v11.1：药打卡独立成仪表盘待办，发作页不再采集
                           tookPainkiller: showPainkiller ? tookPainkiller : nil,
                           painkillerName: showPainkiller && !painkillerName.isEmpty ? painkillerName : nil,
                           triggerNotes: notes.isEmpty ? nil : notes)
@@ -240,7 +282,7 @@ struct UricReadingPage: View {
             Section {
                 NavigationLink { UricReadingEditor() } label: {
                     Label("记一次化验值", systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                        .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             // A5：趋势折线图（Swift Charts，iOS16；免费功能——给自己看的）
@@ -421,7 +463,7 @@ struct WaterPage: View {
                     if w.provenance == .estimated {
                         // A3：沿用日诚实标记
                         HStack {
-                            Image(systemName: "sparkles").foregroundColor(.teal)
+                            Image(systemName: "sparkles").foregroundColor(.brand)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("今天按上周平均沿用（\(w.totalMl)ml）").font(.callout.weight(.medium))
                                 Text("不算连续打卡；想重新手记就在设置里关掉沿用").font(.caption2).foregroundColor(.secondary)
@@ -436,23 +478,34 @@ struct WaterPage: View {
                             .font(.caption)
                         }
                     } else {
-                        HStack {
-                            Button { addCup() } label: {
-                                Label("记一杯", systemImage: "plus.circle.fill")
-                                    .font(.body.weight(.semibold))
+                        // v11.1 Waterllama 式水位杯：数字之外的即时可视化
+                        HStack(spacing: 16) {
+                            WaterGaugeView(fraction: CGFloat(w.totalMl) / CGFloat(max(w.goalMl, 1)))
+                                .frame(width: 56, height: 88)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("今日 \(w.totalMl) ml").font(.title3.bold()).foregroundColor(.water)
+                                Text("\(w.cups.count) 杯 · 目标 \(w.goalMl) ml").font(.caption).foregroundColor(.secondary)
+                                // v11.1 #11：每杯容量提前到记一杯下方（就近原则）
+                                Stepper("每杯 \(w.cupSizeMl) ml（容器不一可改）", value: Binding(
+                                    get: { store.todayWater?.cupSizeMl ?? 250 },
+                                    set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v } }
+                                ), in: 100...800, step: 50)
+                                .font(.caption)
                             }
-                            .buttonStyle(.borderedProminent)
                             Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("今日 \(w.totalMl) ml / \(w.cups.count) 杯").font(.callout.weight(.medium))
-                                Text("每杯 \(w.cupSizeMl) ml（点右下改）").font(.caption2).foregroundColor(.secondary)
-                            }
                         }
+                        .padding(.vertical, 4)
+                        Button { addCup() } label: {
+                            Label("记一杯", systemImage: "plus.circle.fill")
+                                .font(.body.weight(.semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.water)
                         // A2：逐杯明细
                         if !w.cups.isEmpty {
                             ForEach(w.cups.reversed()) { c in
                                 HStack {
-                                    Image(systemName: "drop.fill").font(.caption).foregroundColor(.cyan)
+                                    Image(systemName: "drop.fill").font(.caption).foregroundColor(.water)
                                     Text(c.time.formatted(date: .omitted, time: .shortened))
                                     Spacer()
                                     Text("\(c.ml) ml").font(.caption).foregroundColor(.secondary)
@@ -475,10 +528,6 @@ struct WaterPage: View {
                 Text("没记的时段就空着——不猜。")
             }
             Section {
-                Stepper("每杯容量：\(store.todayWater?.cupSizeMl ?? 250) ml（容器不一可改）", value: Binding(
-                    get: { store.todayWater?.cupSizeMl ?? 250 },
-                    set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v } }
-                ), in: 100...800, step: 50)
                 Toggle("沿用上周平均（不想每天记时用）", isOn: Binding(
                     get: { store.meta.waterAutoFillActive },
                     set: { on in on ? store.enableWaterAutoFill() : store.disableWaterAutoFill() }
@@ -531,12 +580,21 @@ struct WaterPage: View {
     private func addCup() {
         let size = store.todayWater?.cupSizeMl ?? 250
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
+            let wasBelowGoal = store.waterDays[i].totalMl < store.waterDays[i].goalMl
             store.waterDays[i].cups.append(WaterCup(time: Date(), ml: size))
-            seedCheck()
+            Haptic.tap()
             let total = store.waterDays[i].totalMl
-            UricCelebrate.show("第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml")
-            if total >= store.waterDays[i].goalMl {
-                UricCelebrate.show("今天的水够了——水是最便宜的药")
+            if wasBelowGoal && total >= store.waterDays[i].goalMl {
+                // v11.1：达标庆祝只弹一次（防重复键）
+                let df = DateFormatter(); df.dateFormat = "yyyyMMdd"
+                let key = "ur.waterGoalToasted_" + df.string(from: Date())
+                if !UserDefaults.standard.bool(forKey: key) {
+                    UserDefaults.standard.set(true, forKey: key)
+                    Haptic.success()
+                    UricCelebrate.show("今日喝水达标 🎉 水是最便宜的药")
+                }
+            } else {
+                UricCelebrate.show("第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml")
             }
         }
     }
@@ -557,13 +615,6 @@ struct WaterPage: View {
             }
         }
     }
-
-    private func seedCheck() {
-        guard var s = store.seed, s.type == "water", !s.graduated, s.realStreak < 14 else { return }
-        s.realStreak += 1
-        store.seed = s
-        store.meta.seedVotesTotal += 1
-    }
 }
 
 // MARK: - 饮食本体页（B3 重做：红区多选+场景+负面记录+自定义；不分早午晚）
@@ -577,7 +628,7 @@ struct FoodPage: View {
             if let f = store.todayFood {
                 Section("今天") {
                     if f.noTriggerToday {
-                        Label("已记：今天没碰高嘌呤 ✓", systemImage: "checkmark.seal.fill").foregroundColor(.green)
+                        Label("已记：今天没碰高嘌呤 ✓", systemImage: "checkmark.seal.fill").foregroundColor(.success)
                     } else if !f.items.isEmpty || !f.scenes.isEmpty {
                         Text("已记：" + (f.scenes + f.items).joined(separator: "、"))
                             .font(.callout)
@@ -589,31 +640,29 @@ struct FoodPage: View {
                     markNoTrigger()
                 } label: {
                     Label("今天没吃高嘌呤，记一笔 ✓", systemImage: "checkmark.circle")
-                        .foregroundColor(.green)
+                        .foregroundColor(.success)
                 }
             } header: {
                 Text("今天没碰高嘌呤？（负面记录很重要）")
             } footer: {
                 Text("只记「吃了」会让排行虚高——没吃的日子也是数据。")
             }
+            // v11.1 Daylio 式 chip 网格：点选高亮，零键盘
             Section {
-                ForEach(FoodLibrary.redZone) { item in
-                    Button {
-                        toggle(item.name)
-                    } label: {
-                        HStack {
-                            Text(item.name).foregroundColor(.primary)
-                            Spacer()
-                            if store.todayFood?.items.contains(item.name) == true {
-                                Image(systemName: "checkmark.circle.fill").foregroundColor(.red)
-                            }
-                        }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(FoodLibrary.redZone) { item in
+                        FoodChip(
+                            name: item.name,
+                            selected: store.todayFood?.items.contains(item.name) == true,
+                            tint: .danger
+                        ) { toggle(item.name) }
                     }
                 }
+                .padding(.vertical, 4)
             } header: {
                 Text("碰到的高嘌呤（多选，不分早午晚）")
             } footer: {
-                Text("红肉是中嘌呤——碰了就记，但请勿大量（每餐一两内，别当主菜）。")
+                Text("红肉已移到「适量注意」——碰了就记，请勿大量。")
             }
             Section {
                 ForEach(FoodLibrary.scenes, id: \.name) { s in
@@ -624,7 +673,7 @@ struct FoodPage: View {
                             Text(s.name).foregroundColor(.primary)
                             Spacer()
                             if store.todayFood?.scenes.contains(s.name) == true {
-                                Image(systemName: "checkmark.circle.fill").foregroundColor(.red)
+                                Image(systemName: "checkmark.circle.fill").foregroundColor(.danger)
                             }
                         }
                     }
@@ -632,12 +681,12 @@ struct FoodPage: View {
             } header: {
                 Text("今天吃的是一整场？（场景一键）")
             } footer: {
-                Text("火锅/烧烤点了自动带上关联红区项（汤底/红肉/啤酒）。")
+                Text("火锅/烧烤/快餐点了自动带上关联红区项（汤底/红肉/啤酒/可乐）。")
             }
             Section("其他（自定义）") {
                 HStack {
                     TextField("比如：小龙虾", text: $custom)
-                    Button("记") { if !custom.isEmpty { toggle(custom); custom = "" } }
+                    Button("记") { if !custom.isEmpty { Haptic.tap(); toggle(custom); custom = "" } }
                 }
             }
         }
@@ -704,7 +753,7 @@ struct SleepPage: View {
             Section {
                 NavigationLink { SleepQuickPicker() } label: {
                     Label("记昨晚入睡（快捷四档）", systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                        .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             Section {
@@ -738,7 +787,7 @@ struct WeightPage: View {
             Section {
                 NavigationLink { WeightEditor() } label: {
                     Label("记一次体重", systemImage: "plus.circle.fill")
-                        .font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                        .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             Section("历史（点一条可改，左滑删除）") {
@@ -782,7 +831,6 @@ struct WeightEditor: View {
                             UricCelebrate.show("改好了")
                         } else {
                             store.weightLogs.append(WeightLog(date: Date(), kg: v))
-                            seedCheck()
                             UricCelebrate.show("记好了。减重是降尿酸最有效的生活方式干预。")
                         }
                         dismiss()
@@ -798,12 +846,5 @@ struct WeightEditor: View {
         }
         .navigationTitle(editing == nil ? "体重" : "改体重")
         .onAppear { if let e = editing { kgText = String(format: "%.1f", e.kg) } }
-    }
-
-    private func seedCheck() {
-        guard var s = store.seed, s.type == "weigh", !s.graduated, s.realStreak < 14 else { return }
-        s.realStreak += 1
-        store.seed = s
-        store.meta.seedVotesTotal += 1
     }
 }
