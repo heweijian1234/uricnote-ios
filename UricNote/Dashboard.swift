@@ -771,6 +771,5 @@ enum UricCelebrate {
     }
 }
 
-extension Color {
-    static let amber = Color(red: 0.96, green: 0.70, blue: 0.20)
-}
+// amber 重复定义已删（CI run 44311079867 编译错误）：Theme.swift 已有 static let amber = warn
+// 使用处 RecordListView.swift:310 / TrendView.swift:193 走 Theme 的定义即可

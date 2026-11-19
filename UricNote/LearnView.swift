@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit   // CI run 44311079867：SKStoreReviewController 需要（v11.1 评分弹窗）
 
 // MARK: - Tab4 了解（愿景页入口+误区8卡+嘌呤库+反馈+更新日志）
 
@@ -496,7 +497,7 @@ enum FeedbackHelper {
 
         —— 这封信由 UricNote 帮你起草，直接写就好。
         """
-        if let url = URL(string: "mailto:feedback@zeronelabs.com?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
+        if let url = URL(string: "mailto:zerone348@gmail.com?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
             UIApplication.shared.open(url)
         }
     }
