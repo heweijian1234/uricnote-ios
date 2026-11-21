@@ -328,18 +328,105 @@ struct ChangeView: View {
 // MARK: - 门诊记录生成 v11（A1：改名+档案头+生活方式第4节；诚实标记补记/沿用）
 
 enum ClinicReportGenerator {
+    enum ExportFormat: String, CaseIterable, Identifiable {
+        case pdf = "PDF（医生最佳·打印）"
+        case html = "HTML（浏览器打开·保排版）"
+        case csv = "CSV（Excel 分析）"
+        case txt = "TXT（纯文本·通用）"
+        var id: String { rawValue }
+    }
+
+    /// 健哥11-22令2：导出格式选择弹层（多种常用格式）
     static func generate(store: Store) {
-        let readings = store.readings.sorted { $0.date < $1.date }
-        let flares = store.flares.sorted { $0.startDate > $1.startDate }
-        let html = buildHTML(store: store, readings: readings, flares: flares)
-        let tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.html")
-        try? html.write(to: tmp, atomically: true, encoding: .utf8)
-        let vc = UIActivityViewController(activityItems: [tmp], applicationActivities: nil)
-        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
+        let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+        guard let root = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
         var top = root
         while let p = top.presentedViewController { top = p }
-        top.present(vc, animated: true)
+        let alert = UIAlertController(title: L("Export clinic report", "导出门诊记录"), message: L("Pick a format", "选择格式"), preferredStyle: .actionSheet)
+        for fmt in ExportFormat.allCases {
+            alert.addAction(UIAlertAction(title: fmt.rawValue, style: .default) { _ in
+                export(store: store, format: fmt)
+            })
+        }
+        alert.addAction(UIAlertAction(title: L("Cancel", "取消"), style: .cancel))
+        top.present(alert, animated: true)
+    }
+
+    private static func export(store: Store, format: ExportFormat) {
+        let readings = store.readings.sorted { $0.date < $1.date }
+        let flares = store.flares.sorted { $0.startDate > $1.startDate }
+        let tmp: URL
+        switch format {
+        case .pdf, .html:
+            let html = buildHTML(store: store, readings: readings, flares: flares)
+            let name = format == .pdf ? "UricNote_Clinic.pdf" : "UricNote_Clinic.html"
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
+            let data = format == .pdf ? (html as NSString).data(using: String.Encoding.utf8.rawValue)! : Data(html.utf8)
+            try? data.write(to: tmp)
+        case .csv:
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.csv")
+            try? buildCSV(store: store, readings: readings, flares: flares).write(to: tmp, atomically: true, encoding: .utf8)
+        case .txt:
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.txt")
+            try? buildTXT(store: store, readings: readings, flares: flares).write(to: tmp, atomically: true, encoding: .utf8)
+        }
+        DispatchQueue.main.async {
+            let vc = UIActivityViewController(activityItems: [tmp], applicationActivities: nil)
+            var top: UIViewController? = nil
+            if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                top = root
+                while let p = top?.presentedViewController { top = p }
+            }
+            top?.present(vc, animated: true)
+        }
+    }
+
+    /// 健哥11-22令2：CSV 生成（Excel 可直接分析）
+    private static func buildCSV(store: Store, readings: [UricReading], flares: [Flare]) -> String {
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        var rows: [String] = []
+        rows.append("Section,Date,Value1,Value2,Note")
+        for r in readings {
+            let u = store.meta.unitIsUmol ? String(format: "%.0f umol/L", r.urateUnit) : String(format: "%.1f mg/dL", r.valueMgDl)
+            let cr = r.creatinineMgDl.map { String(format: "%.1f mg/dL", $0) } ?? ""
+            rows.append("Lab,\(df.string(from: r.date)),\(u),\(cr),\(r.source == "home" ? "home" : "lab")")
+        }
+        for f in flares {
+            let pk = f.tookPainkiller.map { $0 ? "painkiller" : "" } ?? ""
+            rows.append("Flare,\(df.string(from: f.startDate)),peak \(f.painPeak)/10,\(f.canWalk ? "walkable" : "not walkable"),\(pk)\(f.triggerNotes.map { ";" + $0 } ?? "")")
+        }
+        if let plan = store.medPlans.first(where: { $0.active }) {
+            rows.append("Med,since \(df.string(from: plan.startDate)),\(plan.name) \(plan.dose),\(plan.timesPerDay)x/day,")
+        }
+        return rows.joined(separator: "\n")
+    }
+
+    /// 健哥11-22令2：TXT 生成（纯文本通用）
+    private static func buildTXT(store: Store, readings: [UricReading], flares: [Flare]) -> String {
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        var t = "===== UricNote Clinic Report =====\n"
+        t += "Generated: \(df.string(from: Date()))\n\n"
+        t += "[PROFILE]\n"
+        let p = store.profile
+        if let a = p.age { t += "Age: \(a)\n" }
+        if let g = p.gender { t += "Gender: \(g)\n" }
+        if !p.conditions.isEmpty { t += "Conditions: \(p.conditions.joined(separator: ", "))\n" }
+        t += "\n[LAB VALUES]\n"
+        for r in readings {
+            let u = store.meta.unitIsUmol ? String(format: "%.0f umol/L", r.urateUnit) : String(format: "%.1f mg/dL", r.valueMgDl)
+            let cr = r.creatinineMgDl.map { String(format: ", creatinine %.1f", $0) } ?? ""
+            t += "  \(df.string(from: r.date))  \(u)\(cr)  \(r.atTarget ? "(at target)" : "")\n"
+        }
+        t += "\n[FLARES] (newest first)\n"
+        for f in flares {
+            t += "  \(df.string(from: f.startDate))  peak \(f.painPeak)/10, \(f.canWalk ? "walkable" : "not walkable")\(f.triggerNotes.map { " — \($0)" } ?? "")\n"
+        }
+        if let plan = store.medPlans.first(where: { $0.active }) {
+            t += "\n[CURRENT MED]\n  \(plan.name) \(plan.dose), \(plan.timesPerDay)x/day since \(df.string(from: plan.startDate))\n"
+        }
+        t += "\n===== A logging tool, not medical advice =====\n"
+        return t
     }
 
     private static func buildHTML(store: Store, readings: [UricReading], flares: [Flare]) -> String {
@@ -402,15 +489,17 @@ enum ClinicReportGenerator {
         return """
         <html><head><meta charset=utf-8><style>
         @page{margin:18mm}
-        body{font-family:-apple-system,'Helvetica Neue',sans-serif;margin:24px;font-size:13px;color:#1a1a1a;line-height:1.45}
-        .header{border-bottom:3px solid #0E7C66;padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}
-        h1{font-size:21px;color:#0E7C66;margin:0}
-        .sub{color:#666;font-size:11px}
-        .meta{font-size:11px;color:#555;text-align:right}
-        h2{font-size:14px;margin:16px 0 6px;color:#0E7C66;border-bottom:1px solid #d5e5df;padding-bottom:4px}
-        table{width:100%;border-collapse:collapse;font-size:12px}
-        th{background:#e8f4f0;padding:6px 8px;text-align:left;font-weight:600}
-        td{border-bottom:1px solid #eee;padding:5px 8px}
+        body{font-family:-apple-system,'Helvetica Neue',sans-serif;margin:28px auto;max-width:720px;font-size:14.5px;color:#1a1a1a;line-height:1.6}
+        .header{border-bottom:3px solid #0E7C66;padding-bottom:12px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end}
+        h1{font-size:24px;color:#0E7C66;margin:0}
+        .sub{color:#666;font-size:12px;margin-top:4px}
+        .meta{font-size:12px;color:#555;text-align:right}
+        h2{font-size:16.5px;margin:20px 0 8px;color:#0E7C66;border-bottom:2px solid #0E7C66;padding-bottom:5px}
+        h2::before{content:'▍';margin-right:4px}
+        table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+        th{background:#0E7C66;color:#fff;padding:7px 10px;text-align:left;font-weight:600}
+        tr:nth-child(even) td{background:#f6faf8}
+        td{border-bottom:1px solid #ddd;padding:6px 10px}
         .na{color:#b0b0b0;font-style:italic;background:#fafafa}
         .kpi{display:flex;gap:8px;margin:10px 0}
         .kpi div{flex:1;background:#f2f8f5;border:1px solid #d5e5df;border-radius:8px;padding:8px 10px;text-align:center}

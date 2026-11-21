@@ -439,8 +439,12 @@ struct UricReadingEditor: View {
         let mgDl = store.meta.unitIsUmol ? v / 59.48 : v
         let cr = Double(creatinineText)
         // 健哥11-21令：体重行联动（填了顺手进weightLogs，趋势页体重线直接受益）
+        // 🔴11-22健哥报障加固：同日已有记录先移除（防同日多条叠加看着"没互通/重复"）
         if let w = Double(weightText), w > 0 {
+            // 同日只保留最新一条：删今天的再插（防多条叠加）
+            store.weightLogs.removeAll { Calendar.current.isDate($0.date, inSameDayAs: Date()) }
             store.weightLogs.append(WeightLog(date: Date(), kg: w))
+            store.save()   // 显式落盘
         }
         if var e = editing, let idx = store.readings.firstIndex(where: { $0.id == e.id }) {
             e.valueMgDl = mgDl; e.creatinineMgDl = cr; e.source = source
