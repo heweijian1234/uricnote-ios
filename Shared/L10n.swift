@@ -29,3 +29,9 @@ func foodDisplayName(_ zhName: String) -> String {
     }
     return zhName
 }
+
+/// 分类中文名 → 按语言显示（健哥11-22令：分类内部值=中文常量，显示层才翻译）
+func catName(_ zh: String) -> String {
+    let en: [String: String] = ["全部": "All", "蔬菜": "Vegetables", "水果": "Fruits", "肉类": "Meats", "海鲜": "Seafood", "酒类": "Alcohol", "饮料": "Drinks", "奶茶": "Milk tea", "茶叶": "Tea", "咖啡": "Coffee", "坚果": "Nuts", "零食": "Snacks", "面包": "Breads", "汤类": "Soups", "饮食场景": "Dining scenes", "其他": "Other"]
+    return AppLang.current == .en ? (en[zh] ?? zh) : zh
+}
