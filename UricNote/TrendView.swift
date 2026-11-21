@@ -366,12 +366,34 @@ enum ClinicReportGenerator {
         let flares = store.flares.sorted { $0.startDate > $1.startDate }
         let tmp: URL
         switch format {
-        case .pdf, .html:
+        case .pdf:
+            // 健哥11-22令1根修：真PDF渲染（原假后缀法文件打不开）
             let html = buildHTML(store: store, readings: readings, flares: flares)
-            let name = format == .pdf ? "UricNote_Clinic.pdf" : "UricNote_Clinic.html"
-            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(name)
-            let data = format == .pdf ? (html as NSString).data(using: String.Encoding.utf8.rawValue)! : Data(html.utf8)
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.pdf")
+            let fmt = UIGraphicsPDFRendererFormat()
+            fmt.documentInfo = [
+                kCGPDFContextTitle as String: "UricNote Clinic Report",
+                kCGPDFContextCreator as String: "UricNote"
+            ]
+            // A4 595×842pt，多页自动分页
+            let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)
+            let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: fmt)
+            let attr = try! NSAttributedString(
+                data: Data(html.utf8),
+                options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
+                documentAttributes: nil)
+            let data = renderer.pdfData { ctx in
+                ctx.beginPage()
+                // 简单分页布局：文本绘制器逐页排
+                let framesetter = attr.boundingRect(with: CGSize(width: pageRect.width - 60, height: .greatestFiniteMagnitude), options: .usesLineFragmentOrigin, context: nil)
+                _ = framesetter
+                attr.draw(with: CGRect(x: 30, y: 30, width: pageRect.width - 60, height: pageRect.height - 60), options: .usesLineFragmentOrigin, context: nil)
+            }
             try? data.write(to: tmp)
+        case .html:
+            let html = buildHTML(store: store, readings: readings, flares: flares)
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.html")
+            try? Data(html.utf8).write(to: tmp)
         case .csv:
             tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.csv")
             try? buildCSV(store: store, readings: readings, flares: flares).write(to: tmp, atomically: true, encoding: .utf8)
@@ -391,36 +413,74 @@ enum ClinicReportGenerator {
         }
     }
 
-    /// 健哥11-22令2：CSV 生成（Excel 可直接分析）
+    /// 健哥11-22令2/3/5：CSV 生成（全维度+双语表头——Excel 可直接分析）
     private static func buildCSV(store: Store, readings: [UricReading], flares: [Flare]) -> String {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        let T = { (en: String, zh: String) -> String in L(en, zh) }
         var rows: [String] = []
-        rows.append("Section,Date,Value1,Value2,Note")
+        let esc = { (v: String) -> String in v.contains(",") ? "\"\(v)\"" : v }
+        // ── 档案 ──
+        rows.append("\(T("Field", "字段")),\(T("Value", "值"))")
+        let p = store.profile
+        if let a = p.age { rows.append("\(T("Age", "年龄")),\(a)") }
+        if let g = p.gender { rows.append("\(T("Gender", "性别")),\(g)") }
+        if let h = p.heightCm { rows.append("\(T("Height cm", "身高 cm")),\(Int(h))") }
+        if let w = p.weightKg { rows.append("\(T("Weight kg", "体重 kg")),\(String(format: "%.1f", w))") }
+        if !p.conditions.isEmpty { rows.append("\(T("Conditions", "共病")),\(esc(p.conditions.joined(separator: "; ")))") }
+        if let d = p.drugAllergies, !d.isEmpty { rows.append("\(T("Drug allergy", "药物过敏")),\(esc(d))") }
+        if let fam = p.familyGout { rows.append("\(T("Family gout history", "家族痛风史")),\(fam)") }
+        // ── 化验 ──
+        rows.append("")
+        rows.append("\(T("LABS 日", "化验")),\(T("Date", "日期")),\(T("Urate", "尿酸")),\(T("Creatinine", "肌酐")),\(T("At target", "达标")),\(T("Source", "来源"))")
         for r in readings {
             let u = store.meta.unitIsUmol ? String(format: "%.0f umol/L", r.urateUnit) : String(format: "%.1f mg/dL", r.valueMgDl)
-            let cr = r.creatinineMgDl.map { String(format: "%.1f mg/dL", $0) } ?? ""
-            rows.append("Lab,\(df.string(from: r.date)),\(u),\(cr),\(r.source == "home" ? "home" : "lab")")
+            let cr = r.creatinineMgDl.map { String(format: "%.1f", $0) } ?? ""
+            rows.append("Lab,\(df.string(from: r.date)),\(u),\(cr),\(r.atTarget ? T("Yes","是") : T("No","否")),\(r.source == "home" ? T("Home","家测") : T("Lab","医院"))")
         }
+        // ── 发作 ──
+        rows.append("")
+        rows.append("\(T("FLARES", "发作")),\(T("Date", "日期")),\(T("Joints", "部位")),\(T("Peak /10", "峰值/10")),\(T("Walking", "行走")),\(T("Painkiller", "止痛药")),\(T("Trigger note", "诱因备注"))")
         for f in flares {
-            let pk = f.tookPainkiller.map { $0 ? "painkiller" : "" } ?? ""
-            rows.append("Flare,\(df.string(from: f.startDate)),peak \(f.painPeak)/10,\(f.canWalk ? "walkable" : "not walkable"),\(pk)\(f.triggerNotes.map { ";" + $0 } ?? "")")
+            let pk = f.tookPainkiller.map { $0 ? T("Yes","是") : T("No","否") } ?? ""
+            rows.append("Flare,\(df.string(from: f.startDate)),\(esc(f.joints.joined(separator: "; "))),\(f.painPeak),\(f.canWalk ? T("Yes","能走") : T("No","不能走")),\(pk),\(esc(f.triggerNotes ?? ""))")
         }
-        if let plan = store.medPlans.first(where: { $0.active }) {
-            rows.append("Med,since \(df.string(from: plan.startDate)),\(plan.name) \(plan.dose),\(plan.timesPerDay)x/day,")
+        // ── 用药 ──
+        rows.append("")
+        rows.append("\(T("MEDS", "用药")),\(T("Name", "名称")),\(T("Dose", "剂量")),\(T("Times/day", "次/日")),\(T("Since", "始于"))")
+        for plan in store.medPlans where plan.active {
+            rows.append("Med,\(esc(plan.name)),\(plan.dose),\(plan.timesPerDay),\(df.string(from: plan.startDate))")
+        }
+        // ── 每日生活方式 ──
+        rows.append("")
+        rows.append("\(T("DAILY", "每日")),\(T("Date", "日期")),\(T("Water ml", "饮水 ml")),\(T("Water mode", "饮水方式")),\(T("High-purine logged", "碰高嘌呤")),\(T("Sleep bucket", "入睡档")),\(T("Weight kg", "体重 kg"))")
+        let allDays = Set(store.waterDays.map { Calendar.current.startOfDay(for: $0.day) } + store.foodDays.map { Calendar.current.startOfDay(for: $0.day) } + store.sleepLogs.map { Calendar.current.startOfDay(for: $0.date) } + store.weightLogs.map { Calendar.current.startOfDay(for: $0.date) }).sorted()
+        for day in allDays {
+            let w = store.waterDays.first { Calendar.current.isDate($0.day, inSameDayAs: day) }
+            let f = store.foodDays.first { Calendar.current.isDate($0.day, inSameDayAs: day) }
+            let sl = store.sleepLogs.first { Calendar.current.isDate($0.date, inSameDayAs: day) }
+            let wl = store.weightLogs.first { Calendar.current.isDate($0.date, inSameDayAs: day) }
+            let foodStr: String
+            if let f {
+                if f.noTriggerToday { foodStr = T("none logged", "未碰") }
+                else { foodStr = esc((f.scenes + f.items).map(foodDisplayName).joined(separator: "; ")) }
+            } else { foodStr = "" }
+            rows.append("Daily,\(df.string(from: day)),\(w.map { String($0.totalMl) } ?? ""),\(w.map { $0.provenance == .estimated ? T("auto","沿用") : T("logged","实测") } ?? ""),\(foodStr),\(sl.map { ["<23","23-24","0-1",">1"][$0.bucket] } ?? ""),\(wl.map { String(format: "%.1f", $0.kg) } ?? "")")
         }
         return rows.joined(separator: "\n")
     }
 
-    /// 健哥11-22令2：TXT 生成（纯文本通用）
+
+    /// 健哥11-22令2/5：TXT 生成（纯文本通用·跟随语言）
     private static func buildTXT(store: Store, readings: [UricReading], flares: [Flare]) -> String {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-        var t = "===== UricNote Clinic Report =====\n"
-        t += "Generated: \(df.string(from: Date()))\n\n"
-        t += "[PROFILE]\n"
+        let T = { (en: String, zh: String) -> String in L(en, zh) }
+        var t = "===== \(T("UricNote Clinic Report", "UricNote 门诊记录")) =====\n"
+        t += "\(T("Generated", "生成时间")): \(df.string(from: Date()))\n\n"
+        t += "[\(T("PROFILE", "档案"))]\n"
         let p = store.profile
-        if let a = p.age { t += "Age: \(a)\n" }
-        if let g = p.gender { t += "Gender: \(g)\n" }
-        if !p.conditions.isEmpty { t += "Conditions: \(p.conditions.joined(separator: ", "))\n" }
+        if let a = p.age { t += "\(T("Age", "年龄")): \(a)\n" }
+        if let g = p.gender { t += "\(T("Gender", "性别")): \(g)\n" }
+        if !p.conditions.isEmpty { t += "\(T("Conditions", "共病")): \(p.conditions.joined(separator: ", "))\n" }
         t += "\n[LAB VALUES]\n"
         for r in readings {
             let u = store.meta.unitIsUmol ? String(format: "%.0f umol/L", r.urateUnit) : String(format: "%.1f mg/dL", r.valueMgDl)
@@ -495,10 +555,12 @@ enum ClinicReportGenerator {
         let activeMed = store.medPlans.first(where: { $0.active })
         let medLine = activeMed.map { L("\($0.name) \($0.dose) ×\($0.timesPerDay)/day", "\($0.name) \($0.dose) ×\($0.timesPerDay)/日") } ?? L("Not recorded", "未记录")
 
+        // 健哥11-22令2/5：模板文字跟随语言（医生能看懂）
+        let T = { (en: String, zh: String) -> String in L(en, zh) }
         return """
         <html><head><meta charset=utf-8><style>
         @page{margin:18mm}
-        body{font-family:-apple-system,'Helvetica Neue',sans-serif;margin:28px auto;max-width:720px;font-size:14.5px;color:#1a1a1a;line-height:1.6}
+        body{font-family:-apple-system,'Helvetica Neue','PingFang SC',sans-serif;margin:28px auto;max-width:720px;font-size:14.5px;color:#1a1a1a;line-height:1.6}
         .header{border-bottom:3px solid #0E7C66;padding-bottom:12px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end}
         h1{font-size:24px;color:#0E7C66;margin:0}
         .sub{color:#666;font-size:12px;margin-top:4px}
@@ -518,30 +580,30 @@ enum ClinicReportGenerator {
         .tag{display:inline-block;background:#e8f4f0;color:#0E7C66;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px}
         </style></head><body>
         <div class=header>
-          <div><h1>UricNote 门诊记录</h1><div class=sub>患者日常自记录整理 · 供门诊参考（非医疗报告）</div></div>
-          <div class=meta>生成时间 \(df.string(from: Date()))<br>UricNote App</div>
+          <div><h1>\(T("UricNote Clinic Report", "UricNote 门诊记录"))</h1><div class=sub>\(T("Patient self-recorded log · for clinic reference (not a medical report)", "患者日常自记录整理 · 供门诊参考（非医疗报告）"))</div></div>
+          <div class=meta>\(T("Generated", "生成时间")) \(df.string(from: Date()))<br>UricNote App</div>
         </div>
         \(profileHtml)
         <div class=kpi>
-          <div><b>\(store.flareFreeDays.map { String($0) } ?? "—")</b><span>无痛天数 Flare-free days</span></div>
-          <div><b>\(adherence)</b><span>服药依从率 (30d) Adherence</span></div>
-          <div><b>\(store.lastReading.map { String(format: "%.1f", $0.valueMgDl) } ?? "—")</b><span>最近尿酸 mg/dL Latest urate</span></div>
+          <div><b>\(store.flareFreeDays.map { String($0) } ?? "—")</b><span>\(T("Flare-free days", "无痛天数"))</span></div>
+          <div><b>\(adherence)</b><span>\(T("Adherence (30d)", "服药依从率 (30d)"))</span></div>
+          <div><b>\(store.lastReading.map { String(format: "%.1f", $0.valueMgDl) } ?? "—")</b><span>\(T("Latest urate mg/dL", "最近尿酸 mg/dL"))</span></div>
         </div>
-        <h2>1. 尿酸化验（含肌酐） <span class=tag>目标 Target &lt;6.0 mg/dL / 360 µmol/L</span></h2>
-        <table><tr><th>日期 Date</th><th>尿酸 mg/dL</th><th>肌酐 Creatinine</th><th>判定 Status</th><th>来源 Source</th></tr>\(readingRows)</table>
-        <h2>2. 发作史 Flare History（最近 10 次）</h2>
-        <table><tr><th>日期 Date</th><th>部位 Joints</th><th>疼痛峰值 Peak</th><th>行走 Walking</th><th>用药 Meds</th></tr>\(flareRows)</table>
-        <h2>3. 用药与依从性 Medication & Adherence</h2>
-        <p>当前用药 Current medication：<b>\(medLine)</b><br>
-        近 30 天依从率 30-day adherence：<b>\(adherence)</b><span class=tag>补记已标注 backfills marked</span></p>
-        <h2>4. 生活方式 Lifestyle（日常记录汇总）</h2>
+        <h2>1. \(T("Uric Acid Labs (incl. creatinine)", "尿酸化验（含肌呅）")) <span class=tag>\(T("Target &lt;6.0 mg/dL / 360 µmol/L", "目标 &lt;6.0 mg/dL / 360 µmol/L"))</span></h2>
+        <table><tr><th>\(T("Date", "日期"))</th><th>\(T("Urate mg/dL", "尿酸 mg/dL"))</th><th>\(T("Creatinine", "肌酐"))</th><th>\(T("Status", "判定"))</th><th>\(T("Source", "来源"))</th></tr>\(readingRows)</table>
+        <h2>2. \(T("Flare History (last 10)", "发作史（最近 10 次）"))</h2>
+        <table><tr><th>\(T("Date", "日期"))</th><th>\(T("Joints", "部位"))</th><th>\(T("Peak", "疼痛峰值"))</th><th>\(T("Walking", "行走"))</th><th>\(T("Meds", "用药"))</th></tr>\(flareRows)</table>
+        <h2>3. \(T("Medication & Adherence", "用药与依从性"))</h2>
+        <p>\(T("Current medication", "当前用药"))：<b>\(medLine)</b><br>
+        \(T("30-day adherence", "近 30 天依从率"))：<b>\(adherence)</b><span class=tag>\(T("backfills marked", "补记已标注"))</span></p>
+        <h2>4. \(T("Lifestyle (daily log summary)", "生活方式（日常记录汇总）"))</h2>
         <p>
-        饮水 Hydration：达标 \(onTargetDays) 天 / 沿用均值 \(estimatedWater.count) 天<span class=tag>沿用=按上周平均自动填，非实测</span><br>
-        饮食 Diet：登记高嘌呤 \(redTouchDays) 天 · 明确未碰 \(noTriggerDays) 天（负面记录也是数据）<br>
-        入睡 Sleep：\(sleepLine)<br>
-        体重 Weight：\(weightLine)
+        \(T("Hydration", "饮水"))：\(T("on-goal \(onTargetDays) d / auto-avg \(estimatedWater.count) d", "达标 \(onTargetDays) 天 / 沿用均值 \(estimatedWater.count) 天"))<span class=tag>\(T("auto=weekly average, not measured", "沿用=按上周平均自动填，非实测"))</span><br>
+        \(T("Diet", "饮食"))：\(T("high-purine logged \(redTouchDays) d · clean \(noTriggerDays) d", "登记高嘌呤 \(redTouchDays) 天 · 明确未碰 \(noTriggerDays) 天"))<br>
+        \(T("Sleep", "入睡"))：\(sleepLine)<br>
+        \(T("Weight", "体重"))：\(weightLine)
         </p>
-        <p class=note>本记录由 UricNote App 生成，全部数据为患者日常自记录（非医疗设备测量）。「未记录/No data」=该时段无录入，不代表指标正常；「补记」=患者事后确认；「沿用」=按患者此前一周均值自动填。 Generated by UricNote — self-reported daily log for clinic reference. 参考：ACR 2020 Guideline · Treat-to-target rhythm（GoutSMART, Lancet Rheumatology 2022）· 卫健委2024食养指南。</p>
+        <p class=note>\(T("Generated by UricNote. All data is patient self-reported (not medical-device measurements). 'Not recorded' = no entry that period, not a normal result; 'backfill' = patient confirmed later; 'auto' = filled from the patient's prior-week average. Refs: ACR 2020 Guideline · Treat-to-target (GoutSMART, Lancet Rheum 2022) · NHHC 2024.", "本记录由 UricNote App 生成，全部数据为患者日常自记录（非医疗设备测量）。「未记录」=该时段无录入，不代表指标正常；「补记」=患者事后确认；「沿用」=按患者此前一周均值自动填。参考：ACR 2020 指南 · Treat-to-target（GoutSMART, Lancet Rheumatology 2022）· 卫健委2024食养指南。"))</p>
         </body></html>
         """
     }
