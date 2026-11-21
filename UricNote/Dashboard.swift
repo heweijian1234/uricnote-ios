@@ -91,7 +91,7 @@ struct DashboardView: View {
     // 三数字（A5：距目标三段式用用户单位；复查倒计时显示推算过程+可调间隔）
     private var bigNumbers: some View {
         HStack(spacing: 12) {
-            bigNum(value: store.flareFreeDays.map { "\($0)" } ?? "—", label: L("Pain-free days", "无痛天数")), footnote: store.flareFreeDays == nil ? L("Counting from your first logged flare", "记录第一次发作后开始计数") : flareFootnote)
+            bigNum(value: store.flareFreeDays.map { "\($0)" } ?? "—", label: L("Pain-free days", "无痛天数"), footnote: store.flareFreeDays == nil ? L("Counting from your first logged flare", "记录第一次发作后开始计数") : flareFootnote)
             NavigationLink { UricReadingPage() } label: {
                 bigNum(value: deltaText, label: L("Last uric acid", "上次尿酸值"), footnote: deltaFootnote).contentShape(Rectangle())
             }

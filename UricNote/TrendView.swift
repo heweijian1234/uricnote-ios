@@ -284,7 +284,7 @@ struct ChangeView: View {
                 if !store.weightLogs.isEmpty {
                     let first = store.weightLogs.min { $0.date < $1.date }?.kg ?? 0
                     let last = store.weightLogs.max { $0.date < $1.date }?.kg ?? 0
-                    changeRow(L("Weight", "体重")), current: String(format: "%.1f kg", last), prior: String(format: L("At start: %.1f kg", "记录开始时：%.1f kg"), first))
+                    changeRow(L("Weight", "体重"), current: String(format: "%.1f kg", last), prior: String(format: L("At start: %.1f kg", "记录开始时：%.1f kg"), first))
                 }
                 if store.sleepLogs.count >= 4 {
                     let recent = store.sleepLogs.suffix(14)
@@ -372,7 +372,7 @@ enum ClinicReportGenerator {
 
         var flareRows = ""
         for f in flares.prefix(10) {
-            let med = f.tookMedsToday.map { $0 ? L("Took", "吃了") : L("Didn't take", "没吃") } ?? L("Not logged", "未记"))
+            let med = f.tookMedsToday.map { $0 ? L("Took", "吃了") : L("Didn't take", "没吃") } ?? L("Not logged", "未记")
             let pk = f.tookPainkiller.map { L("Painkiller \($0 ? "✓" : "✗")", "止痛药\($0 ? "✓" : "✗")") } ?? ""
             flareRows += "<tr><td>\(df.string(from: f.startDate))</td><td>\(f.joints.joined(separator: "/"))</td><td>\(f.painPeak)/10</td><td>\(f.canWalk ? "Yes" : "No")</td><td>\(med) \(pk)</td></tr>"
         }
