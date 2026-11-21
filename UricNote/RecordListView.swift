@@ -908,7 +908,7 @@ struct DailyFoodPickerSheet: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
     @State private var query = ""
-    @State private var category = L("All", "全部")
+    @State private var category = "全部"
     @State private var tab = 1   // 0=适量 1=注意（默认注意——健哥令仅这两列）
 
     static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]   // 🔴中文常量做key（inferredCategory返回中文）——显示层用catName()包L

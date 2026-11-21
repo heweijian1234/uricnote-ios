@@ -218,7 +218,7 @@ struct PurineListView: View {
     // 🔴健哥令 2026-11-15：默认先看"能吃什么"（绿灯优先）——患者打开 food 库全是禁忌会心情糟糕/抗拒（v8 情绪设计：先给希望再给边界）
     @State private var tab = 0   // 0=绿灯能吃 1=黄灯适量 2=红灯注意
     // 健哥11-21令：分类导航（健哥11-21晚令+零食）
-    @State private var category = L("All", "全部")
+    @State private var category = "全部"
 static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]   // 🔴中文常量做key（inferredCategory返回中文）——显示层用catName()包L
 
     var body: some View {
