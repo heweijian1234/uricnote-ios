@@ -911,14 +911,14 @@ struct DailyFoodPickerSheet: View {
     @State private var category = L("All", "全部")
     @State private var tab = 1   // 0=适量 1=注意（默认注意——健哥令仅这两列）
 
-    static let categories = [L("All", "全部"), L("Vegetables", "蔬菜"), L("Fruits", "水果"), L("Meats", "肉类"), L("Seafood", "海鲜"), L("Alcohol", "酒类"), L("Drinks", "饮料"), L("Milk tea", "奶茶"), L("Tea", "茶叶"), L("Coffee", "咖啡"), L("Nuts", "坚果"), L("Snacks", "零食"), L("Breads", "面包"), L("Soups", "汤类"), L("Dining scenes", "饮食场景"), L("Other", "其他")]
+    static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]   // 🔴中文常量做key（inferredCategory返回中文）——显示层用catName()包L
 
     /// 候选=嘌呤食物库的适量+注意（yellow+red）——与库完全一致
     private var candidates: [PurineItem] {
         if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
         let levelKey = ["yellow", "red"][tab]
         let byQuery = store.purineItems.filter { query.isEmpty || (($0.name + " " + ($0.nameEn ?? "")).localizedCaseInsensitiveContains(query)) }
-        let byCategory = category == L("All", "全部") ? byQuery : byQuery.filter { $0.inferredCategory == category }
+        let byCategory = category == "全部" ? byQuery : byQuery.filter { $0.inferredCategory == category }
         return byCategory.filter { $0.level == levelKey }.sorted { $0.name < $1.name }
     }
 
@@ -937,7 +937,7 @@ struct DailyFoodPickerSheet: View {
                             Button {
                                 category = c
                             } label: {
-                                Text(c)
+                                Text(catName(c))
                                     .font(.caption.weight(.medium))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 6)
@@ -1004,7 +1004,7 @@ struct ScenePickerSheet: View {
     private var sceneItems: [PurineItem] {
         if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
         return store.purineItems
-            .filter { $0.inferredCategory == L("Dining scenes", "饮食场景") }
+            .filter { $0.inferredCategory == "饮食场景" }
             .sorted { $0.name < $1.name }
     }
 
