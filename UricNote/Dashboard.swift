@@ -41,7 +41,7 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 Image(systemName: "quote.opening")
                     .foregroundColor(.brand)
-                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己")) : L("Your reason for managing uric acid: \(m.rawValue)", "你管理尿酸，最重要的原因是：\(m.rawValue)"))
+                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己")) : L("Your reason for managing uric acid: \(m.displayName)", "你管理尿酸，最重要的原因是：\(m.displayName)"))
                     .font(.callout.weight(.medium))
                     .foregroundColor(.secondary)
             }

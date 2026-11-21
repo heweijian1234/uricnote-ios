@@ -304,7 +304,7 @@ struct ChangeView: View {
             }
             if let m = store.meta.motivation {
                 Section {
-                    Text("身体好了，\(m == .other ? (store.meta.motivationCustomText ?? "一切才更从容。") : m.rawValue == L("Be there for family longer", "陪家人更久") ? L("the days with family are steady.", "陪家人的日子才安稳。") : m.rawValue == L("No more waking up in pain", "不再被疼醒") ? L("no more waking in pain.", "才不用再被疼醒。") : L("work stays on track.", "工作才有着落。"))")
+                    Text(L("When your body is well, \(m == .other ? (store.meta.motivationCustomText ?? "everything gets easier.") : m.rawValue == "陪家人更久" ? "the days with family are steady." : m.rawValue == "不再被疼醒" ? "no more waking in pain." : "work stays on track.")", "身体好了，\(m == .other ? (store.meta.motivationCustomText ?? "一切才更从容。") : m.rawValue == "陪家人更久" ? "陪家人的日子才安稳。" : m.rawValue == "不再被疼醒" ? "才不用再被疼醒。" : "工作才有着落。")"))
                         .font(.callout).foregroundColor(.secondary)
                 }
             }
@@ -329,11 +329,20 @@ struct ChangeView: View {
 
 enum ClinicReportGenerator {
     enum ExportFormat: String, CaseIterable, Identifiable {
-        case pdf = "PDF（医生最佳·打印）"
-        case html = "HTML（浏览器打开·保排版）"
-        case csv = "CSV（Excel 分析）"
-        case txt = "TXT（纯文本·通用）"
+        case pdf = "PDF"
+        case html = "HTML"
+        case csv = "CSV"
+        case txt = "TXT"
         var id: String { rawValue }
+        /// 显示名（双语——rawValue只做存储/文件名，不直接显示）
+        var displayName: String {
+            switch self {
+            case .pdf: return L("PDF (best for doctors · print)", "PDF（医生最佳·打印）")
+            case .html: return L("HTML (opens in browser · keeps layout)", "HTML（浏览器打开·保排版）")
+            case .csv: return L("CSV (for Excel analysis)", "CSV（Excel 分析）")
+            case .txt: return L("TXT (plain text · universal)", "TXT（纯文本·通用）")
+            }
+        }
     }
 
     /// 健哥11-22令2：导出格式选择弹层（多种常用格式）
@@ -344,7 +353,7 @@ enum ClinicReportGenerator {
         while let p = top.presentedViewController { top = p }
         let alert = UIAlertController(title: L("Export clinic report", "导出门诊记录"), message: L("Pick a format", "选择格式"), preferredStyle: .actionSheet)
         for fmt in ExportFormat.allCases {
-            alert.addAction(UIAlertAction(title: fmt.rawValue, style: .default) { _ in
+            alert.addAction(UIAlertAction(title: fmt.displayName, style: .default) { _ in
                 export(store: store, format: fmt)
             })
         }

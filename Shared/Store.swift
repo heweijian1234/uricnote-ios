@@ -23,6 +23,16 @@ enum MotivationChoice: String, Codable, CaseIterable {
     case work = "能正常工作赚钱"
     case family = "陪家人更久"
     case other = "其他"   // 健哥11-21令：第四选项，用户自填（存 motivationCustomText）
+
+    /// 显示名（rawValue是中文存储值——英文版转英文）
+    var displayName: String {
+        switch self {
+        case .painFree: return L("No more waking up in pain", "不再被疼醒")
+        case .work: return L("Keep working and earning", "能正常工作赚钱")
+        case .family: return L("Be there for family longer", "陪家人更久")
+        case .other: return L("Other", "其他")
+        }
+    }
 }
 
 // MARK: - 化验值（v11：+肌酐可选字段 C12）

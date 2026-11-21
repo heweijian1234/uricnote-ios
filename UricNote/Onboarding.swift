@@ -70,7 +70,7 @@ struct OnboardingView: View {
                     HStack {
                         Image(systemName: icon(for: c))
                             .font(.title3)
-                        Text(c.rawValue)
+                        Text(c.displayName)
                             .font(.body.weight(.medium))
                         Spacer()
                         if motivation == c {
