@@ -135,7 +135,7 @@ struct FlareEditorView: View {
     @Environment(\.dismiss) var dismiss
     var editing: Flare? = nil
 
-    private let jointOptions = [L("Toes", "脚趾"), L("Ankles", "脚踝"), L("Heels", "脚跟"), L("Knees", "膝盖"), L("Fingers", "手指"), L("Wrists", "手腕"), L("Elbows", "手肘"), L("Foot top", "足背"), L("Other", "其他"))]
+    private let jointOptions = [L("Toes", "脚趾"), L("Ankles", "脚踝"), L("Heels", "脚跟"), L("Knees", "膝盖"), L("Fingers", "手指"), L("Wrists", "手腕"), L("Elbows", "手肘"), L("Foot top", "足背"), L("Other", "其他")]
     // A7：1-10 文字锚点（美国诊所 NRS 量表的语感补充）
     private let painAnchors = [
         1: L("Barely noticeable", "几乎注意不到"), 2: L("A bit uncomfortable", "有点不舒服"), 3: L("Painful, but functional", "疼，但不影响做事"), 4: L("Painful, getting attention", "疼，开始在意"),
@@ -911,7 +911,7 @@ struct DailyFoodPickerSheet: View {
     @State private var category = L("All", "全部")
     @State private var tab = 1   // 0=适量 1=注意（默认注意——健哥令仅这两列）
 
-    static let categories = [L("All", "全部"), L("Vegetables", "蔬菜"), L("Fruits", "水果"), L("Meats", "肉类"), L("Seafood", "海鲜"), L("Alcohol", "酒类"), L("Drinks", "饮料"), L("Milk tea", "奶茶"), L("Tea", "茶叶"), L("Coffee", "咖啡"), L("Nuts", "坚果"), L("Snacks", "零食"), L("Breads", "面包"), L("Soups", "汤类"), L("Dining scenes", "饮食场景"), L("Other", "其他"))]
+    static let categories = [L("All", "全部"), L("Vegetables", "蔬菜"), L("Fruits", "水果"), L("Meats", "肉类"), L("Seafood", "海鲜"), L("Alcohol", "酒类"), L("Drinks", "饮料"), L("Milk tea", "奶茶"), L("Tea", "茶叶"), L("Coffee", "咖啡"), L("Nuts", "坚果"), L("Snacks", "零食"), L("Breads", "面包"), L("Soups", "汤类"), L("Dining scenes", "饮食场景"), L("Other", "其他")]
 
     /// 候选=嘌呤食物库的适量+注意（yellow+red）——与库完全一致
     private var candidates: [PurineItem] {

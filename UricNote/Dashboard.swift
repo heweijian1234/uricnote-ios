@@ -432,7 +432,7 @@ struct SleepQuickPicker: View {
                         UricCelebrate.show(L("Logged", "记下了") + (b >= 2 ? L(" — late nights can trigger flares; rest early tonight", "——睡太晚也会诱发发作，今晚早点休息") : ""))
                         dismiss()
                     } label: {
-                        Text([L("before 11 PM", "23 点前")), L("11 PM–12 AM", "23 点-24 点"), L("12–1 AM", "0 点-1 点"), L("after 1 AM", "1 点后")][b])
+                        Text([L("before 11 PM", "23 点前"), L("11 PM–12 AM", "23 点-24 点"), L("12–1 AM", "0 点-1 点"), L("after 1 AM", "1 点后")][b])
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(Color.cardBG)
@@ -615,7 +615,7 @@ struct HealthProfileEditor: View {
                         .keyboardType(.numberPad)
                     Text(L("years old", "岁")).foregroundColor(.secondary)
                 }
-                Picker(L("Gender", "性别"), selection: Binding(get: { store.profile.gender ?? L("Male", "男")) }, set: { store.profile.gender = $0 })) {
+                Picker(L("Gender", "性别"), selection: Binding(get: { store.profile.gender ?? "男" }, set: { store.profile.gender = $0 })) {
                     Text(L("Male", "男")).tag("男"); Text(L("Female", "女")).tag("女"); Text(L("Other", "其他")).tag("其他")
                 }
                 TextField(L("Region (e.g. Guangzhou)", "地区（如：广东广州）"), text: Binding(get: { store.profile.region ?? "" }, set: { store.profile.region = $0 }))

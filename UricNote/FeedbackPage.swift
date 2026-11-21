@@ -33,7 +33,7 @@ struct FeedbackPage: View {
                         .font(.subheadline.weight(.semibold))
                     feedbackRow(L("What's clunky", "哪别扭"), L("A page feels clunky, entry is hidden, text too small…", "某个页面用着别扭、找不到入口、字太小……"))
                     feedbackRow(L("What you wish existed", "想要什么"), L("what to log, what trends to see, what to cut", "希望记录什么、希望看到什么趋势、希望少点什么"))
-                    feedbackRow(L("Criticism", "批评"), L("Criticism is most valuable — every message gets read", "批评最有价值——每一条都会被认真读")))
+                    feedbackRow(L("Criticism", "批评"), L("Criticism is most valuable — every message gets read", "批评最有价值——每一条都会被认真读"))
                     feedbackRow(L("Report a bug", "报问题"), L("Crash / data loss / display error — note roughly when it happened", "闪退/数据丢了/显示错了，写上大概什么时候发生的"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
