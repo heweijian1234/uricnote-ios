@@ -17,40 +17,40 @@ struct TrendView: View {
                                 Image(systemName: "person.text.rectangle").foregroundColor(.brand)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(profileLine).font(.callout)
-                                    Text("健康档案（点击修改）").font(.caption2).foregroundColor(.secondary)
+                                    Text(L("Health profile (tap to edit)", "健康档案（点击修改）")).font(.caption2).foregroundColor(.secondary)
                                 }
                             }
                         }
                     }
                 }
-                Section("三线趋势（真实可算指标）") {
-                    trendRow(icon: "pills.fill", color: .brand, title: "服药依从率（30 天）", value: adherenceText)
-                    trendRow(icon: "sun.max", color: .warn, title: "无痛天数", value: store.flareFreeDays.map { "\($0) 天" } ?? "—")
-                    trendRow(icon: "moon.fill", color: .brand, title: "近 14 天入睡（平均）", value: sleepAvgText)
-                    trendRow(icon: "drop.fill", color: .water, title: "今天喝水", value: waterText)
+                Section(L("Three trend lines (real, measurable numbers)", "三线趋势（真实可算指标）")) {
+                    trendRow(icon: "pills.fill", color: .brand, title: L("Med adherence (30 days)", "服药依从率（30 天）"), value: adherenceText)
+                    trendRow(icon: "sun.max", color: .warn, title: L("Pain-free days", "无痛天数"), value: store.flareFreeDays.map { L("\($0) days", "\($0) 天") } ?? "—")
+                    trendRow(icon: "moon.fill", color: .brand, title: L("Sleep (14-day avg)", "近 14 天入睡（平均）"), value: sleepAvgText)
+                    trendRow(icon: "drop.fill", color: .water, title: L("Water today", "今天喝水"), value: waterText)
                 }
                 // v11.1：坚持热力格（HabitKit 式——长期管理病的坚持度可视化）
                 Section {
                     HeatGrid(levels: heatLevels)
                     HStack(spacing: 12) {
-                        heatLegend(0, "未记录")
-                        heatLegend(1, "记 1 类")
-                        heatLegend(2, "记 2 类")
-                        heatLegend(3, "记满 3 类")
+                        heatLegend(0, L("Not recorded", "未记录"))
+                        heatLegend(1, L("1 habit", "记 1 类"))
+                        heatLegend(2, L("2 habits", "记 2 类"))
+                        heatLegend(3, L("All 3", "记满 3 类"))
                     }
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 } header: {
-                    Text("记录坚持（近 90 天）")
+                    Text(L("Consistency (last 90 days)", "记录坚持（近 90 天）"))
                 } footer: {
-                    Text("三类=吃药打卡/喝水/饮食（入睡也算）。格子只给坚持可视化——不评判漏掉的格子。")
+                    Text(L("Three habits: meds, water, food (sleep counts too). The grid shows your streaks — no judgment for missed days.", "三类=吃药打卡/喝水/饮食（入睡也算）。格子只给坚持可视化——不评判漏掉的格子。"))
                 }
                 Section {
                     NavigationLink { UricTrendDetailView() } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("尿酸趋势图").font(.body.weight(.medium))
-                                Text("化验值折线+目标线").font(.caption).foregroundColor(.secondary)
+                                Text(L("Uric acid trend chart", "尿酸趋势图")).font(.body.weight(.medium))
+                                Text(L("Lab values with target line", "化验值折线+目标线")).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
                             Image(systemName: "chart.line.uptrend.xyaxis").foregroundColor(.brand)
@@ -59,7 +59,7 @@ struct TrendView: View {
                     NavigationLink { TriggerRankView() } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("诱因排行").font(.body.weight(.medium))
+                                Text(L("Trigger ranking", "诱因排行")).font(.body.weight(.medium))
                                 Text(triggerStatusText).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
@@ -69,15 +69,15 @@ struct TrendView: View {
                     NavigationLink { ChangeView() } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("「改变」页").font(.body.weight(.medium))
-                                Text("90 天 vs 更早——身体给你的答案").font(.caption).foregroundColor(.secondary)
+                                Text(L("the Change page", "「改变」页")).font(.body.weight(.medium))
+                                Text(L("90 days vs sooner — your body's answer", "90 天 vs 更早——身体给你的答案")).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
                             Image(systemName: "arrow.up.right").foregroundColor(.brand)
                         }
                     }
                 } header: {
-                    Text("它越来越懂你")
+                    Text(L("It understands you better over time", "它越来越懂你"))
                 }
                 Section {
                     Button {
@@ -88,31 +88,31 @@ struct TrendView: View {
                             Image(systemName: "doc.text.viewfinder")
                             VStack(alignment: .leading, spacing: 2) {
                                 // A1：门诊记录（不是医生报告——发给医生的日常记录）
-                                Text("门诊记录").font(.body.weight(.medium))
-                                Text("一页 A4：档案+趋势+发作史+用药+生活方式").font(.caption).foregroundColor(.secondary)
+                                Text(L("Clinic report", "门诊记录")).font(.body.weight(.medium))
+                                Text(L("One A4 page: profile + trends + flare history + meds + lifestyle", "一页 A4：档案+趋势+发作史+用药+生活方式")).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
                             Image(systemName: "lock.open")
                         }
                     }
                 } footer: {
-                    Text("医生只有 15 分钟——这一页足够。缺失数据标「未记录」，沿用日标「沿用」，绝不冒充实测。")
+                    Text(L("Your doctor has 15 minutes — this page is enough. Missing data is marked honestly, never faked.", "医生只有 15 分钟——这一页足够。缺失数据标「未记录」，沿用日标「沿用」，绝不冒充实测。"))
                 }
             }
-            .navigationTitle("趋势")
+            .navigationTitle(L("Trends", "趋势"))
         }
     }
 
     private var profileLine: String {
         var parts: [String] = []
-        if let a = store.profile.age { parts.append("\(a)岁") }
+        if let a = store.profile.age { parts.append(L("\(a) y/o", "\(a)岁")) }
         if let g = store.profile.gender { parts.append(g) }
-        if !store.profile.conditions.isEmpty { parts.append("共病：" + store.profile.conditions.joined(separator: "、")) }
-        return parts.isEmpty ? "健康档案" : parts.joined(separator: " · ")
+        if !store.profile.conditions.isEmpty { parts.append(L("Conditions: ", "共病：") + store.profile.conditions.joined(separator: "、")) }
+        return parts.isEmpty ? L("Health profile", "健康档案") : parts.joined(separator: " · ")
     }
 
     private var adherenceText: String {
-        guard let r = store.adherenceRate else { return "开始记录后出现" }
+        guard let r = store.adherenceRate else { return L("appears once you start logging", "开始记录后出现") }
         return String(format: "%.0f%%", r * 100)
     }
 
@@ -121,12 +121,12 @@ struct TrendView: View {
         guard !recent.isEmpty else { return "—" }
         let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
         let idx = Int(avg.rounded())
-        return ["23点前", "23-24点", "0-1点", "1点后"][min(idx, 3)]
+        return [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(idx, 3)]
     }
 
     private var waterText: String {
-        guard let w = store.todayWater else { return "未开始" }
-        if w.provenance == .estimated { return "沿用 \(w.totalMl)ml" }
+        guard let w = store.todayWater else { return L("not started", "未开始") }
+        if w.provenance == .estimated { return L("auto \(w.totalMl)ml", "沿用 \(w.totalMl)ml") }
         return "\(w.totalMl)/\(w.goalMl) ml"
     }
 
@@ -134,9 +134,9 @@ struct TrendView: View {
     private var triggerStatusText: String {
         let distinctDays = Set(store.foodDays.map { Calendar.current.startOfDay(for: $0.day) }).count
         if store.flares.count >= 3 && distinctDays >= 30 {
-            return "已有足够数据，点开看你的 Top 诱因"
+            return L("Enough data — tap to see your top triggers", "已有足够数据，点开看你的 Top 诱因")
         }
-        return "还差 \(max(0, 30 - distinctDays)) 天数据（需 30 天记录）· 已记 \(distinctDays) 天"
+        return L("\(max(0, 30 - distinctDays)) more days needed (30-day minimum) · \(distinctDays) logged", "还差 \(max(0, 30 - distinctDays)) 天数据（需 30 天记录）· 已记 \(distinctDays) 天")
     }
 
     private func trendRow(icon: String, color: Color, title: String, value: String) -> some View {
@@ -182,24 +182,24 @@ struct UricTrendDetailView: View {
                 if store.lastReading != nil {
                     HStack {
                         Text(store.meta.unitIsUmol
-                             ? "最新 \(String(format: "%.0f", store.lastReading!.urateUnit)) µmol/L"
-                             : "最新 \(String(format: "%.1f", store.lastReading!.valueMgDl)) mg/dL")
+                             ? L("Latest \(String(format: "%.0f", store.lastReading!.urateUnit)) µmol/L", "最新 \(String(format: "%.0f", store.lastReading!.urateUnit)) µmol/L")
+                             : L("Latest \(String(format: "%.1f", store.lastReading!.valueMgDl)) mg/dL", "最新 \(String(format: "%.1f", store.lastReading!.valueMgDl)) mg/dL"))
                             .font(.title3.bold())
                         Spacer()
-                        Text(store.isAtTarget == true ? "达标 ✓" : "目标 <\(store.meta.unitIsUmol ? "360" : "6.0")")
+                        Text(store.isAtTarget == true ? L("At target ✓", "达标 ✓") : L("Target <\(store.meta.unitIsUmol ? "360" : "6.0")", "目标 <\(store.meta.unitIsUmol ? "360" : "6.0")"))
                             .foregroundColor(store.isAtTarget == true ? .green : .amber)
                     }
                     UricTrendChart()
                         .frame(height: 240)
-                    Text("虚线=达标线。连续点之间的间隔就是你的真实化验节奏——不用等 App 提醒，复查日已有排程。")
+                    Text(L("Dashed line = target. Gaps between points show your real testing rhythm — rechecks are already scheduled.", "虚线=达标线。连续点之间的间隔就是你的真实化验节奏——不用等 App 提醒，复查日已有排程。"))
                         .font(.caption).foregroundColor(.secondary)
                 } else {
-                    Text("记一次化验值后出现趋势图").foregroundColor(.secondary)
+                    Text(L("Trend chart appears after your first lab value", "记一次化验值后出现趋势图")).foregroundColor(.secondary)
                 }
             }
             .padding()
         }
-        .navigationTitle("尿酸趋势")
+        .navigationTitle(L("Uric acid trends", "尿酸趋势"))
     }
 }
 
@@ -227,8 +227,8 @@ struct TriggerRankView: View {
             if ranked.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "sparkles").font(.largeTitle).foregroundColor(.secondary)
-                    Text("还在积累你的个人数据").font(.body.weight(.medium))
-                    Text("记录 30 天饮食 + 3 次发作后，这里会告诉你「最近几次发作前你共同碰了什么」——不是评分，是你自己的规律。没碰高嘌呤的日子也算数据。")
+                    Text(L("Still building your personal data", "还在积累你的个人数据")).font(.body.weight(.medium))
+                    Text(L("After 30 days of food logs + 3 flares, this shows what you commonly ate before flares — not a score, your own pattern. Clean days count too.", "记录 30 天饮食 + 3 次发作后，这里会告诉你「最近几次发作前你共同碰了什么」——不是评分，是你自己的规律。没碰高嘌呤的日子也算数据。"))
                         .font(.callout)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -242,18 +242,18 @@ struct TriggerRankView: View {
                             Text("\(i + 1).").font(.headline).foregroundColor(.brand)
                             Text(r.name)
                             Spacer()
-                            Text("\(r.count) 次发作前 72h 内出现过")
+                            Text(L("Appeared within 72h before \(r.count) flares", "\(r.count) 次发作前 72h 内出现过"))
                                 .font(.caption).foregroundColor(.secondary)
                         }
                     }
                 } header: {
-                    Text("你最近 \(store.flares.count) 次发作前的共同饮食")
+                    Text(L("Foods common before your last \(store.flares.count) flares", "你最近 \(store.flares.count) 次发作前的共同饮食"))
                 } footer: {
-                    Text("这是你自己的数据，不是通用建议。「对我相关的列表」比任何通用清单都有用（患者研究实证）。")
+                    Text(L("This is your own data, not generic advice. A personally relevant list beats any generic one (patient research).", "这是你自己的数据，不是通用建议。「对我相关的列表」比任何通用清单都有用（患者研究实证）。"))
                 }
             }
         }
-        .navigationTitle("诱因排行")
+        .navigationTitle(L("Trigger ranking", "诱因排行"))
     }
 }
 
@@ -275,42 +275,42 @@ struct ChangeView: View {
     var body: some View {
         List {
             Section {
-                Text("少一次发作，多一份自由。")
+                Text(L("One less flare, one more day of freedom.", "少一次发作，多一份自由。"))
                     .font(.title3.bold())
             }
-            Section("你最近 90 天") {
-                changeRow("发作次数", current: "\(recent90Flares) 次", prior: prior90Flares > 0 ? "更早 90 天：\(prior90Flares) 次" : "开始记录后出现")
-                changeRow("无痛天数", current: store.flareFreeDays.map { "\($0) 天" } ?? "—", prior: "记录第一次发作后开始计数")
+            Section(L("Your last 90 days", "你最近 90 天")) {
+                changeRow(L("Flare count", "发作次数"), current: L("\(recent90Flares) flares", "\(recent90Flares) 次"), prior: prior90Flares > 0 ? L("Prior 90 days: \(prior90Flares) flares", "更早 90 天：\(prior90Flares) 次") : L("Appears once you start logging", "开始记录后出现"))
+                changeRow(L("Pain-free days", "无痛天数"), current: store.flareFreeDays.map { L("\($0) days", "\($0) 天") } ?? "—", prior: L("Counting from your first logged flare", "记录第一次发作后开始计数"))
                 if !store.weightLogs.isEmpty {
                     let first = store.weightLogs.min { $0.date < $1.date }?.kg ?? 0
                     let last = store.weightLogs.max { $0.date < $1.date }?.kg ?? 0
-                    changeRow("体重", current: String(format: "%.1f kg", last), prior: String(format: "记录开始时：%.1f kg", first))
+                    changeRow(L("Weight", "体重")), current: String(format: "%.1f kg", last), prior: String(format: L("At start: %.1f kg", "记录开始时：%.1f kg"), first))
                 }
                 if store.sleepLogs.count >= 4 {
                     let recent = store.sleepLogs.suffix(14)
                     let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
                     let idx = Int(avg.rounded())
-                    changeRow("入睡（近 14 天）", current: ["23点前", "23-24点", "0-1点", "1点后"][min(idx, 3)], prior: "共 \(store.sleepLogs.count) 晚记录")
+                    changeRow(L("Sleep (last 14 days)", "入睡（近 14 天）"), current: [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(idx, 3)], prior: L("\(store.sleepLogs.count) nights logged", "共 \(store.sleepLogs.count) 晚记录"))
                 }
             }
             Section {
                 HStack {
-                    Text("你给自己投了 \(store.meta.seedVotesTotal) 票").font(.body.weight(.semibold))
+                    Text(L("\(store.meta.seedVotesTotal) votes for yourself", "你给自己投了 \(store.meta.seedVotesTotal) 票")).font(.body.weight(.semibold))
                     Spacer()
                     Image(systemName: "checkmark.seal.fill").foregroundColor(.green)
                 }
-                Text("每一次实时记录都是给「照顾好自己的人」投的一票。补记和沿用不计数——因为投票要算数。")
+                Text(L("Every same-day log is a vote for 'the person who takes care of himself'. Backfilled and auto-filled days don't count — votes should count.", "每一次实时记录都是给「照顾好自己的人」投的一票。补记和沿用不计数——因为投票要算数。"))
                     .font(.caption).foregroundColor(.secondary)
             }
             if let m = store.meta.motivation {
                 Section {
-                    Text("身体好了，\(m == .other ? (store.meta.motivationCustomText ?? "一切才更从容。") : m.rawValue == "陪家人更久" ? "陪家人的日子才安稳。" : m.rawValue == "不再被疼醒" ? "才不用再被疼醒。" : "工作才有着落。")")
+                    Text("身体好了，\(m == .other ? (store.meta.motivationCustomText ?? "一切才更从容。") : m.rawValue == L("Be there for family longer", "陪家人更久") ? L("the days with family are steady.", "陪家人的日子才安稳。") : m.rawValue == L("No more waking up in pain", "不再被疼醒") ? L("no more waking in pain.", "才不用再被疼醒。") : L("work stays on track.", "工作才有着落。"))")
                         .font(.callout).foregroundColor(.secondary)
                 }
             }
         }
-        .navigationTitle("改变")
-        .toolbar { NavigationLink("记体重") { WeightEditor() } }
+        .navigationTitle(L("Change", "改变"))
+        .toolbar { NavigationLink(L("Log weight", "记体重")) { WeightEditor() } }
     }
 
     private func changeRow(_ label: String, current: String, prior: String) -> some View {
@@ -351,16 +351,16 @@ enum ClinicReportGenerator {
         if store.profile.isComplete {
             let p = store.profile
             var parts: [String] = []
-            if let a = p.age { parts.append("年龄 \(a)岁") }
+            if let a = p.age { parts.append(L("Age \(a)", "年龄 \(a)岁")) }
             if let g = p.gender { parts.append(g) }
-            if let h = p.heightCm, let w = p.weightKg { parts.append("身高 \(Int(h))cm / 体重 \(String(format: "%.1f", w))kg") }
-            if let r = p.region, !r.isEmpty { parts.append("地区 \(r)") }
-            if !p.conditions.isEmpty { parts.append("共病 " + p.conditions.joined(separator: "、")) }
-            if let d = p.drugAllergies, !d.isEmpty { parts.append("药物过敏 \(d)") }
-            if let f = p.foodAllergies, !f.isEmpty { parts.append("食物过敏 \(f)") }
-            if let fam = p.familyGout { parts.append("家族史 \(fam)") }
+            if let h = p.heightCm, let w = p.weightKg { parts.append(L("Height \(Int(h))cm / Weight \(String(format: "%.1f", w))kg", "身高 \(Int(h))cm / 体重 \(String(format: "%.1f", w))kg")) }
+            if let r = p.region, !r.isEmpty { parts.append(L("Region \(r)", "地区 \(r)")) }
+            if !p.conditions.isEmpty { parts.append(L("Conditions: ", "共病 ") + p.conditions.joined(separator: "、")) }
+            if let d = p.drugAllergies, !d.isEmpty { parts.append(L("Drug allergy \(d)", "药物过敏 \(d)")) }
+            if let f = p.foodAllergies, !f.isEmpty { parts.append(L("Food allergy \(f)", "食物过敏 \(f)")) }
+            if let fam = p.familyGout { parts.append(L("Family history \(fam)", "家族史 \(fam)")) }
             if let hla = p.hlaTested { parts.append("HLA-B*5801 \(hla)") }
-            profileHtml = "<p><b>患者档案：</b>" + parts.joined(separator: " · ") + "</p>"
+            profileHtml = "<p><b>Patient profile:</b>" + parts.joined(separator: " · ") + "</p>"
         }
 
         var readingRows = ""
@@ -368,15 +368,15 @@ enum ClinicReportGenerator {
             let cr = r.creatinineMgDl.map { String(format: "%.1f", $0) } ?? "—"
             readingRows += "<tr><td>\(df.string(from: r.date))</td><td>\(String(format: "%.2f", r.valueMgDl))</td><td>\(cr)</td><td>\(r.atTarget ? "At target" : "Above goal")</td><td>\(r.source == "home" ? "Home" : "Lab")</td></tr>"
         }
-        if readings.isEmpty { readingRows = "<tr><td colspan=5 class=na>未记录 No data</td></tr>" }
+        if readings.isEmpty { readingRows = "<tr><td colspan=5 class=na>Not recorded</td></tr>" }
 
         var flareRows = ""
         for f in flares.prefix(10) {
-            let med = f.tookMedsToday.map { $0 ? "吃了" : "没吃" } ?? "未记"
-            let pk = f.tookPainkiller.map { "止痛药\($0 ? "✓" : "✗")" } ?? ""
+            let med = f.tookMedsToday.map { $0 ? L("Took", "吃了") : L("Didn't take", "没吃") } ?? L("Not logged", "未记"))
+            let pk = f.tookPainkiller.map { L("Painkiller \($0 ? "✓" : "✗")", "止痛药\($0 ? "✓" : "✗")") } ?? ""
             flareRows += "<tr><td>\(df.string(from: f.startDate))</td><td>\(f.joints.joined(separator: "/"))</td><td>\(f.painPeak)/10</td><td>\(f.canWalk ? "Yes" : "No")</td><td>\(med) \(pk)</td></tr>"
         }
-        if flares.isEmpty { flareRows = "<tr><td colspan=5 class=na>未记录 No data</td></tr>" }
+        if flares.isEmpty { flareRows = "<tr><td colspan=5 class=na>Not recorded</td></tr>" }
 
         // A1 第4节：生活方式（饮水/饮食/入睡/体重）
         let recordedWater = store.waterDays.filter { $0.provenance == .recorded && !$0.cups.isEmpty }
@@ -386,18 +386,18 @@ enum ClinicReportGenerator {
         let noTriggerDays = store.foodDays.filter { $0.noTriggerToday }.count
         let weightLine: String
         if let first = store.weightLogs.min(by: { $0.date < $1.date }), let last = store.weightLogs.max(by: { $0.date < $1.date }) {
-            weightLine = "\(String(format: "%.1f", first.kg))kg → \(String(format: "%.1f", last.kg))kg（\(df.string(from: first.date)) 起）"
-        } else { weightLine = "未记录" }
+            weightLine = L("\(String(format: "%.1f", first.kg))kg → \(String(format: "%.1f", last.kg))kg (since \(df.string(from: first.date)))", "\(String(format: "%.1f", first.kg))kg → \(String(format: "%.1f", last.kg))kg（\(df.string(from: first.date)) 起）")
+        } else { weightLine = L("Not recorded", "未记录") }
         let sleepLine: String
         if store.sleepLogs.count >= 4 {
             let recent = store.sleepLogs.suffix(14)
             let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
-            sleepLine = ["23点前", "23-24点", "0-1点", "1点后"][min(Int(avg.rounded()), 3)] + "（近14天平均，共\(store.sleepLogs.count)晚记录）"
-        } else { sleepLine = "未记录" }
+            sleepLine = [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(Int(avg.rounded()), 3)] + L("(14-day avg, \(store.sleepLogs.count) nights)", "（近14天平均，共\(store.sleepLogs.count)晚记录）")
+        } else { sleepLine = L("Not recorded", "未记录") }
 
-        let adherence = store.adherenceRate.map { String(format: "%.0f%%", $0 * 100) } ?? "未记录"
+        let adherence = store.adherenceRate.map { String(format: "%.0f%%", $0 * 100) } ?? L("Not recorded", "未记录")
         let activeMed = store.medPlans.first(where: { $0.active })
-        let medLine = activeMed.map { "\($0.name) \($0.dose) ×\($0.timesPerDay)/日" } ?? "未记录"
+        let medLine = activeMed.map { L("\($0.name) \($0.dose) ×\($0.timesPerDay)/day", "\($0.name) \($0.dose) ×\($0.timesPerDay)/日") } ?? L("Not recorded", "未记录")
 
         return """
         <html><head><meta charset=utf-8><style>

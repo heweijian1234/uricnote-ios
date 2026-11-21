@@ -1,0 +1,16 @@
+[
+ ", last.kg))kg（\\(df.string(from: first.date)) 起）",
+ ", store.recall.hour, store.recall.minute)) 提醒你回顾今天（不用每件事当场记）",
+ "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议",
+ "嘌呤约 \\(Int(item.uricPer100g)) mg/100g · \\(item.level == ",
+ "最新 \\(String(format: ",
+ "止痛药\\($0 ? ",
+ "每天 \\(String(format: ",
+ "疼痛峰值 \\(f.painPeak)/10 · \\(f.canWalk ? ",
+ "疼痛程度：\\(Int(pain))/10 —— \\(painAnchors[Int(pain)] ?? ",
+ "目标 <\\(store.meta.unitIsUmol ? ",
+ "肌酐 \\(String(format: ",
+ "身体好了，\\(m == .other ? (store.meta.motivationCustomText ?? ",
+ "身高 \\(Int(h))cm / 体重 \\(String(format: ",
+ "身高 cm"
+]

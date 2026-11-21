@@ -11,7 +11,7 @@ struct OnboardingView: View {
     @State private var heightText = ""
     @State private var weightText = ""
     @State private var ageText = ""
-    @State private var gender = "男"
+    @State private var gender = L("Male", "男")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,10 +37,10 @@ struct OnboardingView: View {
 
             // 底部按钮
             HStack(spacing: 12) {
-                Button("跳过") { finish() }
+                Button(L("Skip", "跳过")) { finish() }
                     .foregroundColor(.secondary)
                 Button(action: { next() }) {
-                    Text(step == 2 ? "开始使用" : (step == 1 ? "保存并继续" : "下一步"))
+                    Text(step == 2 ? L("Get Started", "开始使用")) : (step == 1 ? L("Save & continue", "保存并继续") : L("Next", "下一步")))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                         .background(step == 0 && (motivation == nil || (motivation == .other && otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty)) ? Color.gray.opacity(0.3) : Color.brand)
@@ -57,10 +57,10 @@ struct OnboardingView: View {
     // 第1步：动机三选一（v8 动机锚——用户选的成为仪表盘铭牌+文案定制轴）
     private var motivationStep: some View {
         VStack(spacing: 20) {
-            Text("你管理尿酸，最重要的原因是？")
+            Text(L("What matters most to you about managing uric acid?", "你管理尿酸，最重要的原因是？"))
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("选一个最像你的——它会一直陪着你")
+            Text(L("Pick the one that sounds most like you — it will stay with you", "选一个最像你的——它会一直陪着你"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             ForEach(MotivationChoice.allCases, id: \.self) { c in
@@ -85,7 +85,7 @@ struct OnboardingView: View {
             }
             // 健哥11-21令：选"其他"展开自填框（这段话会放在仪表盘一直陪你）
             if motivation == .other {
-                TextField("写下你的原因…（它会出现在仪表盘）", text: $otherMotivationText, axis: .vertical)
+                TextField(L("Write your reason… (it will show on your dashboard)", "写下你的原因…（它会出现在仪表盘）"), text: $otherMotivationText, axis: .vertical)
                     .lineLimit(2...3)
                     .padding(12)
                     .background(Color.cardBG)
@@ -107,25 +107,25 @@ struct OnboardingView: View {
     // 第2步：健康档案引导（v11.1：替换原习惯种子步——A6 档案前置，越早填报告越完整）
     private var profileStep: some View {
         VStack(spacing: 20) {
-            Text("我是你的伙伴，想认识一下你")
+            Text(L("I'm your companion — I'd like to know you", "我是你的伙伴，想认识一下你"))
                 .font(.title2.bold())
-            Text("身高体重年龄性别——医生看记录先想知道这些。只存本机，可以以后再补。")
+            Text(L("Height, weight, age, gender — the first things a doctor wants to see. Stored only on this phone; fill in later.", "身高体重年龄性别——医生看记录先想知道这些。只存本机，可以以后再补。"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
-                    TextField("身高 cm", text: $heightText).keyboardType(.numberPad)
-                    TextField("体重 kg", text: $weightText).keyboardType(.decimalPad)
+                    TextField(L("Height cm", "身高 cm"), text: $heightText).keyboardType(.numberPad)
+                    TextField(L("Weight kg", "体重 kg"), text: $weightText).keyboardType(.decimalPad)
                 }
                 .padding(12)
                 .background(Color.cardBG)
                 .cornerRadius(12)
                 HStack(spacing: 10) {
-                    TextField("年龄", text: $ageText).keyboardType(.numberPad)
-                    Picker("性别", selection: $gender) {
-                        Text("男").tag("男"); Text("女").tag("女"); Text("其他").tag("其他")
+                    TextField(L("Age", "年龄"), text: $ageText).keyboardType(.numberPad)
+                    Picker(L("Gender", "性别"), selection: $gender) {
+                        Text(L("Male", "男")).tag("男"); Text(L("Female", "女")).tag("女"); Text(L("Other", "其他")).tag("其他")
                     }
                     .pickerStyle(.menu)
                 }
@@ -134,7 +134,7 @@ struct OnboardingView: View {
                 .cornerRadius(12)
             }
 
-            Text("想填更全（疾病/过敏/家族史）可以之后在仪表盘的「健康档案」卡里补。")
+            Text(L("For more (conditions / allergies / family history), fill in the Health Profile card on the dashboard later.", "想填更全（疾病/过敏/家族史）可以之后在仪表盘的「健康档案」卡里补。"))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -156,41 +156,41 @@ struct OnboardingView: View {
     private var visionStep: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("这不只是一份记录。")
+                Text(L("This is more than a record.", "这不只是一份记录。"))
                     .font(.title.bold())
-                Text("这是一次尊重身体，自我救赎的蜕变。愿你能更幸福的生活。")
+                Text(L("It's a transformation that respects your body — a way back to yourself. May you live happier.", "这是一次尊重身体，自我救赎的蜕变。愿你能更幸福的生活。"))
                     .font(.body)
                     .foregroundColor(.secondary)
 
                 Divider()
 
-                Text("我们相信")
+                Text(L("What we believe", "我们相信"))
                     .font(.headline)
-                Text("尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好，只需要养成习惯。")
+                Text(L("If your uric acid won't come down, it's never because you're not trying — 70% is metabolism, the rest is lifestyle. No judgment here; we just help you manage what you can control. All it takes is a habit.", "尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好，只需要养成习惯。"))
                     .font(.callout)
 
-                Text("现在就能用")
+                Text(L("What you can use right now", "现在就能用"))
                     .font(.headline)
-                visionRow(icon: "fork.knife", text: "食物嘌呤清单，带临床指南背书")
-                visionRow(icon: "brain", text: "每天回忆记录，寻找疼痛的嘌呤因子进行改善")
-                visionRow(icon: "pills", text: "提醒吃药，记录喝水量习惯")
-                visionRow(icon: "doc.text", text: "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议")
+                visionRow(icon: "fork.knife", text: L("A purine food list backed by clinical guidelines.", "食物嘌呤清单，带临床指南背书"))
+                visionRow(icon: "brain", text: L("A daily recall log to find the purine triggers behind your pain", "每天回忆记录，寻找疼痛的嘌呤因子进行改善"))
+                visionRow(icon: "pills", text: L("Medication reminders and water tracking", "提醒吃药，记录喝水量习惯"))
+                visionRow(icon: "doc.text", text: L("A one-page report for your doctor — quick to read, detailed enough for better advice", "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议"))
 
-                Text("会随时间长大")
+                Text(L("It grows with you", "会随时间长大"))
                     .font(.headline)
-                visionRow(icon: "chart.line.uptrend.xyaxis", text: "会随时间记录，画出你的蜕变之路")
-                visionRow(icon: "calendar", text: "7 天后，看到你的习惯趋势线")
-                visionRow(icon: "sparkles", text: "一个月后，发现疼痛前共同吃了什么")
-                visionRow(icon: "figure.walk", text: "更远处：我是一直陪你走过来的朋友")
+                visionRow(icon: "chart.line.uptrend.xyaxis", text: L("Your entries add up into a picture of your progress", "会随时间记录，画出你的蜕变之路"))
+                visionRow(icon: "calendar", text: L("In 7 days, see your habit trends", "7 天后，看到你的习惯趋势线"))
+                visionRow(icon: "sparkles", text: L("In a month, discover what you ate before flares", "一个月后，发现疼痛前共同吃了什么"))
+                visionRow(icon: "figure.walk", text: L("Further ahead: a friend who's been with you all along", "更远处：我是一直陪你走过来的朋友"))
 
-                Text("选择我的理由")
+                Text(L("Why this app", "选择我的理由"))
                     .font(.headline)
-                visionRow(icon: "person.crop.circle.badge.checkmark", text: "开发者本人就是高尿酸痛风患者，正在改善的路上，此 App 是自用也是想帮助更多患友")
-                visionRow(icon: "checkmark.seal", text: "免费使用，持续更新，日后不排除买断制与订阅制，但与你无关——开发初期，下载的患友都是终身免费使用")
-                visionRow(icon: "stethoscope", text: "设计依据是公开的临床试验节律，不是营销噱头")
-                visionRow(icon: "wand.and.stars", text: "设计细节会加入开发者的个人心得")
+                visionRow(icon: "person.crop.circle.badge.checkmark", text: L("The developer has high uric acid and gout too — building this for himself and for fellow patients", "开发者本人就是高尿酸痛风患者，正在改善的路上，此 App 是自用也是想帮助更多患友"))
+                visionRow(icon: "checkmark.seal", text: L("Free to use, constantly updated. Paid tiers may come someday, but early adopters keep full access forever", "免费使用，持续更新，日后不排除买断制与订阅制，但与你无关——开发初期，下载的患友都是终身免费使用"))
+                visionRow(icon: "stethoscope", text: L("Built on published clinical research, not marketing", "设计依据是公开的临床试验节律，不是营销噱头"))
+                visionRow(icon: "wand.and.stars", text: L("Design details come from the developer's own experience", "设计细节会加入开发者的个人心得"))
 
-                Text("本 App 是记录工具，不提供诊断或治疗建议。数据来源：ACR 2020 指南 / G-CAN 2024 缓解标准 / 公开临床试验。")
+                Text(L("This app is a logging tool, not medical advice. Sources: ACR 2020 guideline / G-CAN 2024 / published trials.", "本 App 是记录工具，不提供诊断或治疗建议。数据来源：ACR 2020 指南 / G-CAN 2024 缓解标准 / 公开临床试验。"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

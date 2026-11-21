@@ -26,16 +26,16 @@ struct RootView: View {
             } else {
                 TabView(selection: $tab) {
                     DashboardView()
-                        .tabItem { Label("仪表盘", systemImage: "speedometer") }
+                        .tabItem { Label(L("Dashboard", "仪表盘"), systemImage: "speedometer") }
                         .tag(0)
                     RecordListView()
-                        .tabItem { Label("记录", systemImage: "square.and.pencil") }
+                        .tabItem { Label(L("Records", "记录"), systemImage: "square.and.pencil") }
                         .tag(1)
                     TrendView()
-                        .tabItem { Label("趋势", systemImage: "chart.xyaxis.line") }
+                        .tabItem { Label(L("Trends", "趋势"), systemImage: "chart.xyaxis.line") }
                         .tag(2)
                     LearnView()
-                        .tabItem { Label("了解", systemImage: "book") }
+                        .tabItem { Label(L("Learn", "了解"), systemImage: "book") }
                         .tag(3)
                 }
                 .onAppear {

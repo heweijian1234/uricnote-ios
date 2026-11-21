@@ -14,9 +14,9 @@ struct FeedbackPage: View {
                         Image(systemName: "envelope.circle.fill")
                             .font(.system(size: 44))
                             .foregroundColor(.brand)
-                        Text("给开发者写反馈")
+                        Text(L("Write feedback to the developer", "给开发者写反馈"))
                             .font(.headline)
-                        Text("点开就是一封预填好的邮件，直接写就行")
+                        Text(L("Opens a pre-filled email — just write", "点开就是一封预填好的邮件，直接写就行"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -29,12 +29,12 @@ struct FeedbackPage: View {
                 .padding(.horizontal)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("说什么都可以")
+                    Text(L("Anything you want to say", "说什么都可以"))
                         .font(.subheadline.weight(.semibold))
-                    feedbackRow("哪别扭", "某个页面用着别扭、找不到入口、字太小……")
-                    feedbackRow("想要什么", "希望记录什么、希望看到什么趋势、希望少点什么")
-                    feedbackRow("批评", "批评最有价值——每一条都会被认真读")
-                    feedbackRow("报问题", "闪退/数据丢了/显示错了，写上大概什么时候发生的")
+                    feedbackRow(L("What's clunky", "哪别扭"), L("A page feels clunky, entry is hidden, text too small…", "某个页面用着别扭、找不到入口、字太小……"))
+                    feedbackRow(L("What you wish existed", "想要什么"), L("what to log, what trends to see, what to cut", "希望记录什么、希望看到什么趋势、希望少点什么"))
+                    feedbackRow(L("Criticism", "批评"), L("Criticism is most valuable — every message gets read", "批评最有价值——每一条都会被认真读")))
+                    feedbackRow(L("Report a bug", "报问题"), L("Crash / data loss / display error — note roughly when it happened", "闪退/数据丢了/显示错了，写上大概什么时候发生的"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -48,8 +48,8 @@ struct FeedbackPage: View {
                     HStack {
                         Image(systemName: "clock.arrow.circlepath").foregroundColor(.brand)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("更新日志").font(.callout.weight(.medium))
-                            Text("不少改进来自用户反馈").font(.caption2).foregroundColor(.secondary)
+                            Text(L("Changelog", "更新日志")).font(.callout.weight(.medium))
+                            Text(L("Many improvements come from user feedback", "不少改进来自用户反馈")).font(.caption2).foregroundColor(.secondary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
@@ -61,7 +61,7 @@ struct FeedbackPage: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal)
 
-                Text("你的反馈直接决定这个 App 往哪走。")
+                Text(L("Your feedback directly shapes where this app goes.", "你的反馈直接决定这个 App 往哪走。"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -69,7 +69,7 @@ struct FeedbackPage: View {
             }
             .padding(.vertical, 20)
         }
-        .navigationTitle("反馈")
+        .navigationTitle(L("Feedback", "反馈"))
         .background(Color.appBG)
     }
 

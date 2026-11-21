@@ -10,40 +10,40 @@ struct RecordListView: View {
     var body: some View {
         NavigationView {
             List {
-                Section("身体") {
+                Section(L("Body", "身体")) {
                     NavigationLink { FlarePage() } label: {
-                        Label("发作记录", systemImage: "exclamationmark.triangle.fill").foregroundColor(.danger)
+                        Label(L("Flare records", "发作记录"), systemImage: "exclamationmark.triangle.fill").foregroundColor(.danger)
                     }
                     NavigationLink { UricReadingPage() } label: {
-                        Label("尿酸化验值", systemImage: "list.clipboard")
+                        Label(L("Uric acid lab values", "尿酸化验值"), systemImage: "list.clipboard")
                     }
                     NavigationLink { WeightPage() } label: {
-                        Label("体重", systemImage: "scalemass").foregroundColor(.success)
+                        Label(L("Weight", "体重"), systemImage: "scalemass").foregroundColor(.success)
                     }
                 }
-                Section("生活方式") {
+                Section(L("Lifestyle", "生活方式")) {
                     NavigationLink { WaterPage() } label: {
-                        Label("饮水与尿色", systemImage: "drop.fill").foregroundColor(.water)
+                        Label(L("Water & urine color", "饮水与尿色"), systemImage: "drop.fill").foregroundColor(.water)
                     }
                     NavigationLink { FoodPage() } label: {
-                        Label("饮食（高嘌呤登记）", systemImage: "fork.knife").foregroundColor(.warn)
+                        Label(L("Food (high-purine log)", "饮食（高嘌呤登记）"), systemImage: "fork.knife").foregroundColor(.warn)
                     }
                     NavigationLink { SleepPage() } label: {
-                        Label("入睡时间", systemImage: "moon.fill").foregroundColor(.brand)
+                        Label(L("Sleep time", "入睡时间"), systemImage: "moon.fill").foregroundColor(.brand)
                     }
                 }
-                Section("用药") {
+                Section(L("Medication", "用药")) {
                     NavigationLink { MedTodayView() } label: {
-                        Label("当前使用药物药量", systemImage: "pills").foregroundColor(.brand)
+                        Label(L("Current medication & dose", "当前使用药物药量"), systemImage: "pills").foregroundColor(.brand)
                     }
                 }
                 #if DEBUG
-                Section("测试") {
+                Section(L("Testing", "测试")) {
                     ResetDataButton()
                 }
                 #endif
             }
-            .navigationTitle("记录")
+            .navigationTitle(L("Records", "记录"))
         }
     }
 }
@@ -59,25 +59,25 @@ struct ResetDataButton: View {
         Button(role: .destructive) {
             confirm1 = true
         } label: {
-            Label("重置所有数据（测试用）", systemImage: "trash")
+            Label(L("Reset all data (testing)", "重置所有数据（测试用）"), systemImage: "trash")
         }
-        .alert("确定要清空全部记录吗？", isPresented: $confirm1) {
-            Button("取消", role: .cancel) {}
-            Button("继续", role: .destructive) { confirm2 = true }
+        .alert(L("Erase all records?", "确定要清空全部记录吗？"), isPresented: $confirm1) {
+            Button(L("Cancel", "取消"), role: .cancel) {}
+            Button(L("Continue", "继续"), role: .destructive) { confirm2 = true }
         } message: {
-            Text("所有发作/化验/饮水/饮食/档案数据将永久删除，不可恢复。")
+            Text(L("All flares / labs / water / food / profile data will be permanently deleted.", "所有发作/化验/饮水/饮食/档案数据将永久删除，不可恢复。"))
         }
-        .alert("最后确认", isPresented: $confirm2) {
-            TextField("输入 RESET 确认", text: $inputText)
-            Button("取消", role: .cancel) { inputText = "" }
-            Button("执行重置", role: .destructive) {
+        .alert(L("Final confirmation", "最后确认"), isPresented: $confirm2) {
+            TextField(L("Type RESET to confirm", "输入 RESET 确认"), text: $inputText)
+            Button(L("Cancel", "取消"), role: .cancel) { inputText = "" }
+            Button(L("Execute reset", "执行重置"), role: .destructive) {
                 if inputText == "RESET" {
                     store.resetAllData()
                 }
                 inputText = ""
             }
         } message: {
-            Text("输入 RESET（全大写）执行。")
+            Text(L("Type RESET (all caps) to execute.", "输入 RESET（全大写）执行。"))
         }
     }
 }
@@ -91,20 +91,20 @@ struct FlarePage: View {
         List {
             Section {
                 NavigationLink { FlareEditorView() } label: {
-                    Label("记一次发作（3 秒）", systemImage: "plus.circle.fill")
+                    Label(L("Log a flare (3 sec)", "记一次发作（3 秒）"), systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
-            Section("发作历史（点一条可改，左滑删除）") {
+            Section(L("Flare history (tap to edit, swipe to delete)", "发作历史（点一条可改，左滑删除）")) {
                 if store.flares.isEmpty {
-                    Text("还没有发作记录").font(.callout).foregroundColor(.secondary)
+                    Text(L("No flare records yet", "还没有发作记录")).font(.callout).foregroundColor(.secondary)
                 }
                 ForEach(store.flares.sorted { $0.startDate > $1.startDate }) { f in
                     NavigationLink { FlareEditorView(editing: f) } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(dateText(f.startDate) + " · " + f.joints.joined(separator: "/"))
                                 .font(.body.weight(.medium))
-                            Text("疼痛峰值 \(f.painPeak)/10 · \(f.canWalk ? "能走" : "不能走")")
+                            Text(L("Peak \(f.painPeak)/10 · \(f.canWalk ? "can walk" : "can't walk")", "疼痛峰值 \(f.painPeak)/10 · \(f.canWalk ? "能走" : "不能走")"))
                                 .font(.caption).foregroundColor(.secondary)
                         }
                     }
@@ -115,11 +115,11 @@ struct FlarePage: View {
                 }
             }
         }
-        .navigationTitle("发作记录")
+        .navigationTitle(L("Flare records", "发作记录"))
     }
 
     private func dateText(_ d: Date) -> String {
-        let df = DateFormatter(); df.dateFormat = "M月d日"
+        let df = DateFormatter(); df.dateFormat = L("MMM d", "M月d日")
         return df.string(from: d)
     }
 }
@@ -135,14 +135,14 @@ struct FlareEditorView: View {
     @Environment(\.dismiss) var dismiss
     var editing: Flare? = nil
 
-    private let jointOptions = ["脚趾", "脚踝", "脚跟", "膝盖", "手指", "手腕", "手肘", "足背", "其他"]
+    private let jointOptions = [L("Toes", "脚趾"), L("Ankles", "脚踝"), L("Heels", "脚跟"), L("Knees", "膝盖"), L("Fingers", "手指"), L("Wrists", "手腕"), L("Elbows", "手肘"), L("Foot top", "足背"), L("Other", "其他"))]
     // A7：1-10 文字锚点（美国诊所 NRS 量表的语感补充）
     private let painAnchors = [
-        1: "几乎注意不到", 2: "有点不舒服", 3: "疼，但不影响做事", 4: "疼，开始在意",
-        5: "明显疼", 6: "挺疼的", 7: "很痛，影响走路", 8: "很痛，走路困难",
-        9: "剧痛，只想躺着", 10: "最剧烈的疼，想去急诊",
+        1: L("Barely noticeable", "几乎注意不到"), 2: L("A bit uncomfortable", "有点不舒服"), 3: L("Painful, but functional", "疼，但不影响做事"), 4: L("Painful, getting attention", "疼，开始在意"),
+        5: L("Clearly painful", "明显疼"), 6: L("Quite painful", "挺疼的"), 7: L("Very painful, affects walking", "很痛，影响走路"), 8: L("Very painful, hard to walk", "很痛，走路困难"),
+        9: L("Excruciating — bed-bound", "剧痛，只想躺着"), 10: L("Worst pain ever — ER level", "最剧烈的疼，想去急诊"),
     ]
-    private let impactOptions = ["轻微", "明显", "无法"]
+    private let impactOptions = [L("Slightly", "轻微"), L("Noticeably", "明显"), L("Can't work", "无法")]
 
     @State private var joints: Set<String> = []
     @State private var pain: Double = 0        // D5：默认不选（0=未选，保存前校验）
@@ -156,7 +156,7 @@ struct FlareEditorView: View {
 
     var body: some View {
         Form {
-            Section("哪个部位痛？（可多选）") {
+            Section(L("Where does it hurt? (multi-select)", "哪个部位痛？（可多选）")) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 8)], spacing: 8) {
                     ForEach(jointOptions, id: \.self) { j in
                         Button(j) {
@@ -174,7 +174,7 @@ struct FlareEditorView: View {
             Section {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text(pain == 0 ? "疼痛程度：拖一下选" : "疼痛程度：\(Int(pain))/10 —— \(painAnchors[Int(pain)] ?? "")")
+                        Text(pain == 0 ? L("Pain level: drag to select", "疼痛程度：拖一下选") : L("Pain \(Int(pain))/10 — \(painAnchors[Int(pain)] ?? "")", "疼痛程度：\(Int(pain))/10 —— \(painAnchors[Int(pain)] ?? "")"))
                         Spacer()
                         if pain > 0 {
                             // v11.1 Daylio 式色彩编码：拖动时数值底色随程度变绿→红
@@ -189,47 +189,47 @@ struct FlareEditorView: View {
                     Slider(value: $pain, in: 1...10, step: 1)
                         .onChange(of: pain) { _ in if pain == 0 { pain = 1 } }
                     if pain == 0 {
-                        Text("1=几乎注意不到 · 7=很痛影响走路 · 10=想去急诊")
+                        Text(L("1 = barely noticeable · 7 = painful, hard to walk · 10 = ER-level pain", "1=几乎注意不到 · 7=很痛影响走路 · 10=想去急诊"))
                             .font(.caption2).foregroundColor(.secondary)
                     }
                 }
-                Toggle("还能走路吗", isOn: $canWalk)
+                Toggle(L("Can you still walk", "还能走路吗"), isOn: $canWalk)
                 // v11.1 #7：删"今天吃过药吗"（药打卡已独立成仪表盘待办行，不再重复采集）
             } header: {
-                Text("就这两件，3 秒记完")
+                Text(L("Just two things, 3 seconds to log", "就这两件，3 秒记完"))
             }
-            Section("很痛才看这里（止痛药）") {
-                Toggle("用了止痛药", isOn: $showPainkiller)
+            Section(L("Only for bad flares (painkillers)", "很痛才看这里（止痛药）")) {
+                Toggle(L("Took a painkiller", "用了止痛药"), isOn: $showPainkiller)
                 if showPainkiller {
-                    Toggle("刚才吃了吗", isOn: $tookPainkiller)
-                    TextField("止痛药名（记一次固定，如：布洛芬）", text: $painkillerName)
+                    Toggle(L("Did you just take it", "刚才吃了吗"), isOn: $tookPainkiller)
+                    TextField(L("Painkiller name (saved once, e.g. ibuprofen)", "止痛药名（记一次固定，如：布洛芬）"), text: $painkillerName)
                 }
             }
             Section {
-                Toggle("对工作有影响吗", isOn: $showWorkImpact)
+                Toggle(L("Does it affect work", "对工作有影响吗"), isOn: $showWorkImpact)
                 if showWorkImpact {
                     // D1 修复：影响程度独立变量，不再污染诱因备注
-                    Picker("影响程度", selection: $workImpactNote) {
+                    Picker(L("Impact level", "影响程度"), selection: $workImpactNote) {
                         ForEach(impactOptions, id: \.self) { Text($0).tag($0) }
                     }
                 }
-                TextField("诱因备注（比如：昨晚喝了啤酒）", text: $notes, axis: .vertical)
+                TextField(L("Trigger note (e.g. beer last night)", "诱因备注（比如：昨晚喝了啤酒）"), text: $notes, axis: .vertical)
                     .lineLimit(2...4)
             } header: {
-                Text("可选：发作结束后补")
+                Text(L("Optional: after the flare ends", "可选：发作结束后补"))
             }
             Section {
-                Button(editing == nil ? "保存" : "保存修改") {
+                Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
                     save()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
                 .disabled(pain == 0 || joints.isEmpty)
             } footer: {
-                Text("夜间发作风险是白天 2.4 倍——这个入口按「痛醒状态也能用」设计。")
+                Text(L("Nighttime flare risk is 2.4× daytime — this entry is designed for use while in pain.", "夜间发作风险是白天 2.4 倍——这个入口按「痛醒状态也能用」设计。"))
             }
         }
-        .navigationTitle(editing == nil ? "记发作" : "改发作记录")
+        .navigationTitle(editing == nil ? L("Log flare", "记发作") : L("Edit flare record", "改发作记录"))
         .onAppear { if let e = editing { load(e) } }
     }
 
@@ -256,7 +256,7 @@ struct FlareEditorView: View {
             e.workImpactNote = showWorkImpact && !workImpactNote.isEmpty ? workImpactNote : nil
             e.triggerNotes = notes.isEmpty ? nil : notes
             store.flares[idx] = e
-            UricCelebrate.show("改好了")
+            UricCelebrate.show(L("Saved", "改好了"))
         } else {
             let f = Flare(startDate: Date(), endDate: nil, joints: Array(joints), painPeak: Int(pain),
                           canWalk: canWalk, workImpact: showWorkImpact ? impactIdx : 0,
@@ -266,7 +266,7 @@ struct FlareEditorView: View {
                           painkillerName: showPainkiller && !painkillerName.isEmpty ? painkillerName : nil,
                           triggerNotes: notes.isEmpty ? nil : notes)
             store.flares.append(f)
-            UricCelebrate.show("记下了。今晚好好休息，这里都帮你记着，你不用惦记。")
+            UricCelebrate.show(L("Logged. Rest well tonight — it's all written down, you don't have to hold it in your head.", "记下了。今晚好好休息，这里都帮你记着，你不用惦记。"))
         }
         dismiss()
     }
@@ -281,20 +281,20 @@ struct UricReadingPage: View {
         List {
             Section {
                 NavigationLink { UricReadingEditor() } label: {
-                    Label("记一次化验值", systemImage: "plus.circle.fill")
+                    Label(L("Log a lab value", "记一次化验值"), systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             // A5：趋势折线图（Swift Charts，iOS16；免费功能——给自己看的）
             if store.readings.count >= 2 {
-                Section("趋势") {
+                Section(L("Trends", "趋势")) {
                     UricTrendChart()
                         .frame(height: 180)
                 }
             }
-            Section("历史（点一条可改，左滑删除）") {
+            Section(L("History (tap to edit, swipe to delete)", "历史（点一条可改，左滑删除）")) {
                 if store.readings.isEmpty {
-                    Text("还没有化验记录").font(.callout).foregroundColor(.secondary)
+                    Text(L("No lab records yet", "还没有化验记录")).font(.callout).foregroundColor(.secondary)
                 }
                 ForEach(store.readings.sorted { $0.date > $1.date }) { r in
                     NavigationLink { UricReadingEditor(editing: r) } label: {
@@ -305,15 +305,15 @@ struct UricReadingPage: View {
                                      : String(format: "%.1f mg/dL", r.valueMgDl))
                                     .font(.body.weight(.semibold))
                                 Spacer()
-                                Text(r.atTarget ? "达标 ✓" : "未达标")
+                                Text(r.atTarget ? L("At target ✓", "达标 ✓")) : L("Above target", "未达标"))
                                     .font(.caption)
                                     .foregroundColor(r.atTarget ? .green : .amber)
                             }
                             HStack(spacing: 8) {
                                 Text(r.date.formatted(date: .abbreviated, time: .omitted))
-                                Text(r.source == "home" ? "家测" : "医院化验")
+                                Text(r.source == "home" ? L("home test", "家测") : L("Hospital lab", "医院化验"))
                                 if let cr = r.creatinineMgDl {
-                                    Text("肌酐 \(String(format: "%.1f", cr)) mg/dL")
+                                    Text(L("Creatinine \(String(format: "%.1f", cr)) mg/dL", "肌酐 \(String(format: "%.1f", cr)) mg/dL"))
                                 }
                             }
                             .font(.caption).foregroundColor(.secondary)
@@ -326,9 +326,9 @@ struct UricReadingPage: View {
                 }
             }
         }
-        .navigationTitle("尿酸化验值")
+        .navigationTitle(L("Uric acid lab values", "尿酸化验值"))
         .toolbar {
-            NavigationLink("调间隔") { ReviewIntervalEditor() }
+            NavigationLink(L("Adjust interval", "调间隔")) { ReviewIntervalEditor() }
         }
     }
 }
@@ -341,19 +341,19 @@ struct UricTrendChart: View {
         let data = store.readings.sorted { $0.date < $1.date }
         Chart {
             ForEach(data, id: \.id) { r in
-                LineMark(x: .value("日期", r.date),
-                         y: .value("尿酸", store.meta.unitIsUmol ? r.urateUnit : r.valueMgDl))
-                PointMark(x: .value("日期", r.date),
-                          y: .value("尿酸", store.meta.unitIsUmol ? r.urateUnit : r.valueMgDl))
+                LineMark(x: .value(L("Date", "日期"), r.date),
+                         y: .value(L("Uric acid", "尿酸"), store.meta.unitIsUmol ? r.urateUnit : r.valueMgDl))
+                PointMark(x: .value(L("Date", "日期"), r.date),
+                          y: .value(L("Uric acid", "尿酸"), store.meta.unitIsUmol ? r.urateUnit : r.valueMgDl))
             }
-            RuleMark(y: .value("目标", store.meta.unitIsUmol ? 360.0 : 6.0))
+            RuleMark(y: .value(L("Target", "目标"), store.meta.unitIsUmol ? 360.0 : 6.0))
                 .foregroundStyle(Color.green.opacity(0.5))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
         }
         .chartYAxis {
             AxisMarks(position: .trailing)
         }
-        .accessibilityLabel("尿酸趋势图")
+        .accessibilityLabel(L("Uric acid trend chart", "尿酸趋势图"))
     }
 }
 
@@ -363,7 +363,7 @@ struct ReviewIntervalEditor: View {
 
     var body: some View {
         Form {
-            Picker("复查间隔", selection: Binding(
+            Picker(L("Recheck interval", "复查间隔"), selection: Binding(
                 get: { store.review.intervalWeeks },
                 set: { w in
                     store.review.intervalWeeks = w
@@ -372,11 +372,11 @@ struct ReviewIntervalEditor: View {
                     }
                 }
             )) {
-                Text("4 周").tag(4); Text("6 周").tag(6); Text("8 周").tag(8); Text("12 周").tag(12)
+                Text(L("4 weeks", "4 周")).tag(4); Text(L("6 weeks", "6 周")).tag(6); Text(L("8 weeks", "8 周")).tag(8); Text(L("12 weeks", "12 周")).tag(12)
             }
             .pickerStyle(.segmented)
         }
-        .navigationTitle("复查节律")
+        .navigationTitle(L("Recheck rhythm", "复查节律"))
     }
 }
 
@@ -396,34 +396,34 @@ struct UricReadingEditor: View {
         Form {
             Section {
                 HStack {
-                    TextField("数值", text: $valueText).keyboardType(.decimalPad)
+                    TextField(L("Value", "数值"), text: $valueText).keyboardType(.decimalPad)
                     Text(store.meta.unitIsUmol ? "µmol/L" : "mg/dL").foregroundColor(.secondary)
                 }
                 HStack {
-                    TextField("体重（可选）", text: $weightText).keyboardType(.decimalPad)
+                    TextField(L("Weight (optional)", "体重（可选）"), text: $weightText).keyboardType(.decimalPad)
                     Text("kg").foregroundColor(.secondary)
                 }
                 HStack {
-                    TextField("肌酐（可选）", text: $creatinineText).keyboardType(.decimalPad)
+                    TextField(L("Creatinine (optional)", "肌酐（可选）"), text: $creatinineText).keyboardType(.decimalPad)
                     Text("mg/dL").foregroundColor(.secondary)
                 }
-                Picker("来源", selection: $source) {
-                    Text("医院化验").tag("lab")
-                    Text("家里自测").tag("home")
+                Picker(L("Source", "来源"), selection: $source) {
+                    Text(L("Hospital lab", "医院化验")).tag("lab")
+                    Text(L("Home test", "家里自测")).tag("home")
                 }
                 .pickerStyle(.segmented)
             } header: {
-                Text(editing == nil ? "最近一次尿酸值" : "修改化验值")
+                Text(editing == nil ? L("Most recent uric acid", "最近一次尿酸值")) : L("Edit lab value", "修改化验值"))
             } footer: {
-                Text("肌酐是降酸药选择依据（苯溴马隆肾功能禁忌/别嘌醇按肾功能调量）——报告单上有就顺手填。录完自动排复查日（默认 8 周，可调）。")
+                Text(L("Creatinine guides urate-lowering drug choice — fill it in if it's on your lab report. Next recheck is auto-scheduled (default 8 weeks, adjustable).", "肌酐是降酸药选择依据（苯溴马隆肾功能禁忌/别嘌醇按肾功能调量）——报告单上有就顺手填。录完自动排复查日（默认 8 周，可调）。"))
             }
-            Button(editing == nil ? "保存" : "保存修改") {
+            Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
                 save()
             }
             .frame(maxWidth: .infinity)
             .buttonStyle(.borderedProminent)
         }
-        .navigationTitle(editing == nil ? "记化验值" : "改化验值")
+        .navigationTitle(editing == nil ? L("Log lab value", "记化验值") : L("Edit lab value", "改化验值"))
         .onAppear { if let e = editing { load(e) } }
     }
 
@@ -445,15 +445,15 @@ struct UricReadingEditor: View {
         if var e = editing, let idx = store.readings.firstIndex(where: { $0.id == e.id }) {
             e.valueMgDl = mgDl; e.creatinineMgDl = cr; e.source = source
             store.readings[idx] = e
-            UricCelebrate.show("改好了")
+            UricCelebrate.show(L("Saved", "改好了"))
         } else {
             let r = UricReading(date: Date(), valueMgDl: mgDl, creatinineMgDl: cr, source: source)
             store.readings.append(r)
             store.review.nextReviewDate = Calendar.current.date(byAdding: .weekOfYear, value: store.review.intervalWeeks, to: Date())
             if r.atTarget {
-                UricCelebrate.show("达标了。结晶正在悄悄溶解。")
+                UricCelebrate.show(L("At target. Crystals are quietly dissolving.", "达标了。结晶正在悄悄溶解。"))
             } else {
-                UricCelebrate.show("记好了。复查日已排上。")
+                UricCelebrate.show(L("Logged. Recheck scheduled.", "记好了。复查日已排上。"))
             }
         }
         dismiss()
@@ -470,25 +470,25 @@ struct WaterPage: View {
         List {
             // 健哥11-21令：沿用上周平均上移第一排（标题下方）
             Section {
-                Toggle("沿用上周平均（不想每天记时用）", isOn: Binding(
+                Toggle(L("Auto-fill weekly average (skip daily logging)", "沿用上周平均（不想每天记时用）"), isOn: Binding(
                     get: { store.meta.waterAutoFillActive },
                     set: { on in on ? store.enableWaterAutoFill() : store.disableWaterAutoFill() }
                 ))
             } footer: {
-                Text("开启后，没手记的日子自动按最近 7 天平均填，报告标「沿用」不算打卡。随时可关，关掉后恢复手记。")
+                Text(L("Days you don't log are auto-filled from your 7-day average, marked as 'auto-filled'. Turn off anytime.", "开启后，没手记的日子自动按最近 7 天平均填，报告标「沿用」不算打卡。随时可关，关掉后恢复手记。"))
             }
-            Section("今天") {
+            Section(L("Today", "今天")) {
                 if let w = store.todayWater {
                     if w.provenance == .estimated {
                         // A3：沿用日诚实标记
                         HStack {
                             Image(systemName: "sparkles").foregroundColor(.brand)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("今天按上周平均沿用（\(w.totalMl)ml）").font(.callout.weight(.medium))
-                                Text("不算连续打卡；想重新手记就在设置里关掉沿用").font(.caption2).foregroundColor(.secondary)
+                                Text(L("Today auto-filled from last week's average (\(w.totalMl)ml)", "今天按上周平均沿用（\(w.totalMl)ml）")).font(.callout.weight(.medium))
+                                Text(L("Doesn't count as a logged day; turn auto-fill off in settings to log manually again", "不算连续打卡；想重新手记就在设置里关掉沿用")).font(.caption2).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Button("重记") {
+                            Button(L("Re-log", "重记")) {
                                 if let i = store.waterDays.firstIndex(where: { $0.id == w.id }) {
                                     store.waterDays[i].cups = []
                                     store.waterDays[i].provenance = .recorded
@@ -502,10 +502,10 @@ struct WaterPage: View {
                             WaterGaugeView(fraction: CGFloat(w.totalMl) / CGFloat(max(w.goalMl, 1)))
                                 .frame(width: 56, height: 88)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("今日 \(w.totalMl) ml").font(.title3.bold()).foregroundColor(.water)
-                                Text("\(w.cups.count) 杯 · 目标 \(w.goalMl) ml").font(.caption).foregroundColor(.secondary)
+                                Text(L("Today \(w.totalMl) ml", "今日 \(w.totalMl) ml")).font(.title3.bold()).foregroundColor(.water)
+                                Text(L("\(w.cups.count) cups · goal \(w.goalMl) ml", "\(w.cups.count) 杯 · 目标 \(w.goalMl) ml")).font(.caption).foregroundColor(.secondary)
                                 // v11.1 #11：每杯容量提前到记一杯下方（就近原则）
-                                Stepper("每杯 \(w.cupSizeMl) ml（容器不一可改）", value: Binding(
+                                Stepper(L("\(w.cupSizeMl) ml per cup (adjustable)", "每杯 \(w.cupSizeMl) ml（容器不一可改）"), value: Binding(
                                     get: { store.todayWater?.cupSizeMl ?? 250 },
                                     set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v } }
                                 ), in: 100...800, step: 50)
@@ -515,7 +515,7 @@ struct WaterPage: View {
                         }
                         .padding(.vertical, 4)
                         Button { addCup() } label: {
-                            Label("记一杯", systemImage: "plus.circle.fill")
+                            Label(L("Log a cup", "记一杯"), systemImage: "plus.circle.fill")
                                 .font(.body.weight(.semibold))
                         }
                         .buttonStyle(.borderedProminent)
@@ -530,7 +530,7 @@ struct WaterPage: View {
                                     Text("\(c.ml) ml").font(.caption).foregroundColor(.secondary)
                                 }
                                 .swipeActions {
-                                    Button("删", role: .destructive) { removeCup(c) }
+                                    Button(L("Delete", "删"), role: .destructive) { removeCup(c) }
                                 }
                             }
                         }
@@ -538,16 +538,16 @@ struct WaterPage: View {
                 }
             }
             Section {
-                urinePicker("早", slot: 0)
-                urinePicker("午", slot: 1)
-                urinePicker("晚", slot: 2)
+                urinePicker(L("AM", "早"), slot: 0)
+                urinePicker(L("Noon", "午"), slot: 1)
+                urinePicker(L("PM", "晚"), slot: 2)
             } header: {
-                Text("尿色自评（脱水信号，早午晚）")
+                Text(L("Urine color (hydration signal, AM/noon/PM)", "尿色自评（脱水信号，早午晚）"))
             } footer: {
-                Text("没记的时段就空着——不猜。")
+                Text(L("Unlogged slots stay empty — no guessing.", "没记的时段就空着——不猜。"))
             }
         }
-        .navigationTitle("饮水与尿色")
+        .navigationTitle(L("Water & urine color", "饮水与尿色"))
         .onAppear {
             // A2：满 7 天实测后问一次（只问一次）
             if store.meta.waterAutoFillAsked && !store.meta.waterAutoFillActive && !UserDefaults.standard.bool(forKey: "ur.waterAskShown") {
@@ -555,11 +555,11 @@ struct WaterPage: View {
                 UserDefaults.standard.set(true, forKey: "ur.waterAskShown")
             }
         }
-        .alert("已经手记 7 天了", isPresented: $showAutoFillAsk) {
-            Button("沿用上周平均") { store.enableWaterAutoFill() }
-            Button("继续手记", role: .cancel) {}
+        .alert(L("7 days of manual logging", "已经手记 7 天了"), isPresented: $showAutoFillAsk) {
+            Button(L("Auto-fill weekly average", "沿用上周平均")) { store.enableWaterAutoFill() }
+            Button(L("Keep manual logging", "继续手记"), role: .cancel) {}
         } message: {
-            Text("可以改成自动按上周平均填，不想记的时候少一件事。随时可关。")
+            Text(L("Switch to auto-fill from last week's average — one less thing. Turn off anytime.", "可以改成自动按上周平均填，不想记的时候少一件事。随时可关。"))
         }
     }
 
@@ -569,11 +569,11 @@ struct WaterPage: View {
             get: { urineValue(slotIndex) ?? 0 },
             set: { v in setUrine(slotIndex, v == 0 ? nil : v) }
         )) {
-            Text("未记").tag(0)
-            Text("浅黄（好）").tag(2)
-            Text("正常").tag(3)
-            Text("偏深").tag(5)
-            Text("很深（脱水）").tag(7)
+            Text(L("Not logged", "未记")).tag(0)
+            Text(L("Pale yellow (good)", "浅黄（好）")).tag(2)
+            Text(L("Normal", "正常")).tag(3)
+            Text(L("Dark", "偏深")).tag(5)
+            Text(L("Very dark (dehydrated)", "很深（脱水）")).tag(7)
         }
     }
 
@@ -600,10 +600,10 @@ struct WaterPage: View {
                 if !UserDefaults.standard.bool(forKey: key) {
                     UserDefaults.standard.set(true, forKey: key)
                     Haptic.success()
-                    UricCelebrate.show("今日喝水达标 🎉 水是最便宜的药")
+                    UricCelebrate.show(L("Water goal met today 🎉 Water is the cheapest medicine", "今日喝水达标 🎉 水是最便宜的药"))
                 }
             } else {
-                UricCelebrate.show("第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml")
+                UricCelebrate.show(L("Cup #\(store.waterDays[i].cups.count) · \(total) ml today", "第 \(store.waterDays[i].cups.count) 杯 · 今日 \(total) ml"))
             }
         }
     }
@@ -637,11 +637,11 @@ struct FoodPage: View {
     var body: some View {
         List {
             if let f = store.todayFood {
-                Section("今天") {
+                Section(L("Today", "今天")) {
                     if f.noTriggerToday {
-                        Label("已记：今天没碰高嘌呤 ✓", systemImage: "checkmark.seal.fill").foregroundColor(.success)
+                        Label(L("Logged: no high-purine today ✓", "已记：今天没碰高嘌呤 ✓"), systemImage: "checkmark.seal.fill").foregroundColor(.success)
                     } else if !f.items.isEmpty || !f.scenes.isEmpty {
-                        Text("已记：" + (f.scenes + f.items).joined(separator: "、"))
+                        Text(L("Logged: ", "已记：") + (f.scenes + f.items).joined(separator: "、"))
                             .font(.callout)
                     }
                 }
@@ -654,9 +654,9 @@ struct FoodPage: View {
                     VStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 34))
-                        Text("今天没吃高嘌呤")
+                        Text(L("No high-purine food today", "今天没吃高嘌呤"))
                             .font(.title3.bold())
-                        Text("记一笔 ✓")
+                        Text(L("Log it ✓", "记一笔 ✓"))
                             .font(.callout)
                     }
                     .foregroundColor(.success)
@@ -664,14 +664,14 @@ struct FoodPage: View {
                     .padding(.vertical, 10)
                 }
             } header: {
-                Text("今天没碰高嘌呤？（负面记录很重要）")
+                Text(L("No high-purine food today? (Logging 'none' matters too)", "今天没碰高嘌呤？（负面记录很重要）"))
             } footer: {
-                Text("只记「吃了」会让排行虚高——没吃的日子也是数据。")
+                Text(L("Logging only 'ate' skews the ranking — clean days are data too.", "只记「吃了」会让排行虚高——没吃的日子也是数据。"))
             }
             // 健哥11-21令6：自定义日常饮食表（用户自己建的——看到的都是平常真吃的）
             Section {
                 if store.meta.dailyFoods.isEmpty {
-                    Text("还没建立你的日常饮食表")
+                    Text(L("Your daily food list is empty", "还没建立你的日常饮食表"))
                         .font(.callout).foregroundColor(.secondary)
                 } else {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
@@ -685,7 +685,7 @@ struct FoodPage: View {
                     }
                     .padding(.vertical, 4)
                     // 健哥11-21晚令12：戒了的能删（左滑删同款——管理入口里删，日常区不放破坏性手势）
-                    Text("要删除某项：点下方「添加日常食物」进管理页删除（戒了的就删掉，表只留真在吃的）")
+                    Text(L("To remove an item: open 'Add daily foods' below and uncheck it (keep only what you actually eat)", "要删除某项：点下方「添加日常食物」进管理页删除（戒了的就删掉，表只留真在吃的）"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -693,14 +693,14 @@ struct FoodPage: View {
                 Button {
                     showDailyFoodPicker = true
                 } label: {
-                    Label("添加日常食物", systemImage: "plus.circle")
+                    Label(L("Add daily foods", "添加日常食物"), systemImage: "plus.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
             } header: {
-                Text("我的日常饮食表（点选今天碰过的）")
+                Text(L("My daily food list (tap what you had today)", "我的日常饮食表（点选今天碰过的）"))
             } footer: {
-                Text("每个人的饮食差别很大——从嘌呤食物库选择你平常吃到的，建成自己的表；日后可左滑删除。")
+                Text(L("Everyone eats differently — pick your everyday foods from the library to build your own list; swipe to remove later.", "每个人的饮食差别很大——从嘌呤食物库选择你平常吃到的，建成自己的表；日后可左滑删除。"))
             }
             // 健哥11-21令7：场景自定义（用户自建+其他兜底）
             Section {
@@ -720,22 +720,22 @@ struct FoodPage: View {
                 .onDelete { store.meta.customScenes.remove(atOffsets: $0) }
                 // 其他（自定义）兜底
                 HStack {
-                    TextField("其他（自定义场景/食物）", text: $custom)
-                    Button("记") { if !custom.isEmpty { Haptic.tap(); toggle(custom); custom = "" } }
+                    TextField(L("Other (custom scene/food)", "其他（自定义场景/食物）"), text: $custom)
+                    Button(L("Log", "记")) { if !custom.isEmpty { Haptic.tap(); toggle(custom); custom = "" } }
                 }
                 Button {
                     showSceneEditor = true
                 } label: {
-                    Label("管理场景（从食物库选择）", systemImage: "square.grid.2x2")
+                    Label(L("Manage scenes (from library)", "管理场景（从食物库选择）"), systemImage: "square.grid.2x2")
                         .font(.callout)
                 }
             } header: {
-                Text("今天吃的是一整场？")
+                Text(L("Was today a whole occasion?", "今天吃的是一整场？"))
             } footer: {
-                Text("场景从嘌呤食物库选择建立，贴合你自己的生活方式。")
+                Text(L("Build scenes from the food library to match your own life.", "场景从嘌呤食物库选择建立，贴合你自己的生活方式。"))
             }
         }
-        .navigationTitle("饮食")
+        .navigationTitle(L("Food", "饮食"))
         .sheet(isPresented: $showDailyFoodPicker) {
             DailyFoodPickerSheet()
         }
@@ -773,7 +773,7 @@ struct FoodPage: View {
                 store.foodDays[i].items.append(a)
             }
             store.foodDays[i].noTriggerToday = false
-            UricCelebrate.show("记了。偶尔一次没关系，知道规律才重要。")
+            UricCelebrate.show(L("Logged. One slip is fine — knowing your pattern is what matters.", "记了。偶尔一次没关系，知道规律才重要。"))
         }
     }
 
@@ -782,7 +782,7 @@ struct FoodPage: View {
         store.foodDays[i].noTriggerToday = true
         store.foodDays[i].items = []
         store.foodDays[i].scenes = []
-        UricCelebrate.show("记了——这一天也是数据")
+        UricCelebrate.show(L("Logged — this day is data too", "记了——这一天也是数据"))
     }
 }
 
@@ -796,21 +796,21 @@ struct SleepPage: View {
         guard !recent.isEmpty else { return "—" }
         let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
         let idx = Int(avg.rounded())
-        return ["23点前", "23-24点", "0-1点", "1点后"][min(idx, 3)]
+        return [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(idx, 3)]
     }
 
     var body: some View {
         List {
             Section {
                 NavigationLink { SleepQuickPicker() } label: {
-                    Label("记昨晚入睡（快捷四档）", systemImage: "plus.circle.fill")
+                    Label(L("Log last night's bedtime (quick pick)", "记昨晚入睡（快捷四档）"), systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
             Section {
-                Text("近 14 天平均：\(avgBucket)").font(.callout)
+                Text(L("14-day average: \(avgBucket)", "近 14 天平均：\(avgBucket)")).font(.callout)
             }
-            Section("历史（左滑删除）") {
+            Section(L("History (swipe to delete)", "历史（左滑删除）")) {
                 ForEach(store.sleepLogs.sorted { $0.night > $1.night }) { s in
                     HStack {
                         Text(s.night.formatted(date: .abbreviated, time: .omitted))
@@ -824,7 +824,7 @@ struct SleepPage: View {
                 }
             }
         }
-        .navigationTitle("入睡时间")
+        .navigationTitle(L("Sleep time", "入睡时间"))
     }
 }
 
@@ -837,11 +837,11 @@ struct WeightPage: View {
         List {
             Section {
                 NavigationLink { WeightEditor() } label: {
-                    Label("记一次体重", systemImage: "plus.circle.fill")
+                    Label(L("Log weight", "记一次体重"), systemImage: "plus.circle.fill")
                         .font(.body.weight(.semibold)).foregroundColor(.brand)
                 }
             }
-            Section("历史（点一条可改，左滑删除）") {
+            Section(L("History (tap to edit, swipe to delete)", "历史（点一条可改，左滑删除）")) {
                 ForEach(store.weightLogs.sorted { $0.date > $1.date }) { w in
                     NavigationLink { WeightEditor(editing: w) } label: {
                         HStack {
@@ -857,7 +857,7 @@ struct WeightPage: View {
                 }
             }
         }
-        .navigationTitle("体重")
+        .navigationTitle(L("Weight", "体重"))
     }
 }
 
@@ -871,18 +871,18 @@ struct WeightEditor: View {
         Form {
             Section {
                 HStack {
-                    TextField("例如 88.5", text: $kgText).keyboardType(.decimalPad)
+                    TextField(L("e.g. 88.5", "例如 88.5"), text: $kgText).keyboardType(.decimalPad)
                     Text("kg").foregroundColor(.secondary)
                 }
-                Button(editing == nil ? "保存" : "保存修改") {
+                Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
                     if let v = Double(kgText), v > 0 {
                         if var e = editing, let idx = store.weightLogs.firstIndex(where: { $0.id == e.id }) {
                             e.kg = v
                             store.weightLogs[idx] = e
-                            UricCelebrate.show("改好了")
+                            UricCelebrate.show(L("Saved", "改好了"))
                         } else {
                             store.weightLogs.append(WeightLog(date: Date(), kg: v))
-                            UricCelebrate.show("记好了。减重是降尿酸最有效的生活方式干预。")
+                            UricCelebrate.show(L("Logged. Weight loss is the most effective lifestyle change for uric acid.", "记好了。减重是降尿酸最有效的生活方式干预。"))
                         }
                         dismiss()
                     }
@@ -890,12 +890,12 @@ struct WeightEditor: View {
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             } header: {
-                Text(editing == nil ? "这次体重（kg）" : "改体重")
+                Text(editing == nil ? L("Weight this time (kg)", "这次体重（kg）")) : L("Edit weight", "改体重"))
             } footer: {
-                Text("减重是降尿酸最有效的生活方式干预（每减 5kg，尿酸平均降约 1）。每周一次就够。")
+                Text(L("Weight loss is the most effective lifestyle change for uric acid (about 1 point lower per 5kg lost). Once a week is enough.", "减重是降尿酸最有效的生活方式干预（每减 5kg，尿酸平均降约 1）。每周一次就够。"))
             }
         }
-        .navigationTitle(editing == nil ? "体重" : "改体重")
+        .navigationTitle(editing == nil ? L("Weight", "体重")) : L("Edit weight", "改体重"))
         .onAppear { if let e = editing { kgText = String(format: "%.1f", e.kg) } }
     }
 }
@@ -908,17 +908,17 @@ struct DailyFoodPickerSheet: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
     @State private var query = ""
-    @State private var category = "全部"
+    @State private var category = L("All", "全部")
     @State private var tab = 1   // 0=适量 1=注意（默认注意——健哥令仅这两列）
 
-    static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]
+    static let categories = [L("All", "全部"), L("Vegetables", "蔬菜"), L("Fruits", "水果"), L("Meats", "肉类"), L("Seafood", "海鲜"), L("Alcohol", "酒类"), L("Drinks", "饮料"), L("Milk tea", "奶茶"), L("Tea", "茶叶"), L("Coffee", "咖啡"), L("Nuts", "坚果"), L("Snacks", "零食"), L("Breads", "面包"), L("Soups", "汤类"), L("Dining scenes", "饮食场景"), L("Other", "其他"))]
 
     /// 候选=嘌呤食物库的适量+注意（yellow+red）——与库完全一致
     private var candidates: [PurineItem] {
         if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
         let levelKey = ["yellow", "red"][tab]
         let byQuery = store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
-        let byCategory = category == "全部" ? byQuery : byQuery.filter { $0.inferredCategory == category }
+        let byCategory = category == L("All", "全部") ? byQuery : byQuery.filter { $0.inferredCategory == category }
         return byCategory.filter { $0.level == levelKey }.sorted { $0.name < $1.name }
     }
 
@@ -927,8 +927,8 @@ struct DailyFoodPickerSheet: View {
             List {
                 Section {
                     Picker("", selection: $tab) {
-                        Text("适量").tag(0)
-                        Text("注意").tag(1)
+                        Text(L("Moderate", "适量")).tag(0)
+                        Text(L("Caution", "注意")).tag(1)
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)
@@ -950,9 +950,9 @@ struct DailyFoodPickerSheet: View {
                     }
                     .listRowBackground(Color.clear)
                 } header: {
-                    Text("管理日常食物（勾选=在表里）")
+                    Text(L("Manage daily foods (checked = in your list)", "管理日常食物（勾选=在表里）"))
                 } footer: {
-                    Text("与嘌呤食物库内容一致。取消勾选=从日常饮食表删除（戒了的就删掉）。")
+                    Text(L("Same content as the purine food library. Uncheck to remove from your daily list (delete what you've quit).", "与嘌呤食物库内容一致。取消勾选=从日常饮食表删除（戒了的就删掉）。"))
                 }
 
                 ForEach(candidates) { item in
@@ -968,7 +968,7 @@ struct DailyFoodPickerSheet: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name).foregroundColor(.primary)
                                 // 健哥11-22令2：小字三色——注意=红 适量=黄
-                                Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "注意" : "适量") · \(item.sourceTag)")
+                                Text(L("Purine ~\(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "Caution" : "Moderate") · \(item.sourceTag)", "嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "注意" : "适量") · \(item.sourceTag)"))
                                     .font(.caption2)
                                     .foregroundColor(item.level == "red" ? .danger : .warn)
                             }
@@ -981,12 +981,12 @@ struct DailyFoodPickerSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .searchable(text: $query, prompt: "搜食物")
-            .navigationTitle("管理日常食物")
+            .searchable(text: $query, prompt: L("Search foods", "搜食物"))
+            .navigationTitle(L("Manage daily foods", "管理日常食物"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button(L("Done", "完成")) { dismiss() }
                 }
             }
         }
@@ -1004,7 +1004,7 @@ struct ScenePickerSheet: View {
     private var sceneItems: [PurineItem] {
         if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
         return store.purineItems
-            .filter { $0.inferredCategory == "饮食场景" }
+            .filter { $0.inferredCategory == L("Dining scenes", "饮食场景") }
             .sorted { $0.name < $1.name }
     }
 
@@ -1025,7 +1025,7 @@ struct ScenePickerSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.name).foregroundColor(.primary)
                                     // 健哥11-22令4：能吃=绿 适量=黄 注意=红
-                                    Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))")
+                                    Text(L("Purine ~\(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))", "嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))"))
                                         .font(.caption2)
                                         .foregroundColor(item.level == "red" ? .danger : item.level == "yellow" ? .warn : .success)
                                 }
@@ -1037,22 +1037,22 @@ struct ScenePickerSheet: View {
                         }
                     }
                 } header: {
-                    Text("管理场景（勾选=出现在饮食页）")
+                    Text(L("Manage scenes (checked = shows on food page)", "管理场景（勾选=出现在饮食页）"))
                 } footer: {
-                    Text("与嘌呤食物库的饮食场景同步。取消勾选=从饮食页删除。")
+                    Text(L("Synced with the food library's dining scenes. Uncheck to remove from the food page.", "与嘌呤食物库的饮食场景同步。取消勾选=从饮食页删除。"))
                 }
             }
-            .navigationTitle("管理场景")
+            .navigationTitle(L("Manage scenes", "管理场景"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button(L("Done", "完成")) { dismiss() }
                 }
             }
         }
     }
 
     private func levelName(_ l: String) -> String {
-        l == "red" ? "注意" : l == "yellow" ? "适量" : "能吃"
+        l == "red" ? "Caution" : l == "yellow" ? L("Moderate", "适量")) : L("Safe to eat", "能吃")
     }
 }

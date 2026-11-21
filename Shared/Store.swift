@@ -119,7 +119,7 @@ struct SleepLog: Identifiable, Codable {
     var bucket: Int                // 0=23点前 1=23-24点 2=0-1点 3=1点后
     var provenance: Provenance = .recorded
     var bucketText: String {
-        switch bucket { case 0: return "23点前"; case 1: return "23-24点"; case 2: return "0-1点"; default: return "1点后" }
+        switch bucket { case 0: return L("before 11 PM", "23点前"); case 1: return L("11 PM-12 AM", "23-24点"); case 2: return L("12-1 AM", "0-1点"); default: return L("after 1 AM", "1点后") }
     }
 }
 
@@ -140,7 +140,7 @@ struct PurineItem: Identifiable, Codable {
     var name: String
     var uricPer100g: Double        // 每100g嘌呤mg
     var level: String              // red(>150) / yellow(50-150) / green(<50)
-    var sourceTag: String          // "ACR 2020" / "卫健委2024"
+    var sourceTag: String          // "ACR 2020" / L("NHHC 2024 (China)", "卫健委2024")
     var category: String? = nil    // 健哥11-21令：食物分类导航（Optional默认——旧数据零破坏；运行时推断补齐）
 
     /// 分类推断（关键词映射——种子174条没写category，按名字推断；推断不出归"其他"）
@@ -168,7 +168,7 @@ struct PurineItem: Identifiable, Codable {
             ("米", "面包"), ("面", "面包"), ("燕麦", "面包"), ("麦", "面包"), ("馒头", "面包"), ("包子", "面包"), ("饺子", "面包"), ("馄饨", "面包"),
         ]
         for (kw, cat) in rules where name.contains(kw) { return cat }
-        return "其他"
+        return L("Other", "其他")
     }
 }
 
@@ -233,7 +233,7 @@ struct RecallAlarm: Codable {
 struct AppMeta: Codable {
     var onboardingDone: Bool = false
     var motivation: MotivationChoice?
-    var motivationCustomText: String? = nil   // 健哥11-21令：动机选"其他"时的自填文本（仪表盘铭牌回显）
+    var motivationCustomText: String? = nil   // 健哥11-21令：动机选L("Other", "其他")时的自填文本（仪表盘铭牌回显）
     var lastOpenedAt: Date?
     var unitIsUmol: Bool = true
     var proUnlocked: Bool = false
@@ -462,7 +462,7 @@ final class Store: ObservableObject {
     }
 
     static func medSlotLabel(_ slot: Int) -> String {
-        switch slot { case 1: return "早"; case 2: return "晚"; case 3: return "午"; default: return "第\(slot)次" }
+        switch slot { case 1: return L("AM", "早"); case 2: return L("PM", "晚"); case 3: return L("noon", "午"); default: return L("#\(slot)", "第\(slot)次") }
     }
 
     // ---- v11.1：记无痛按钮可见条件（C 方案：有发作史+今天没记发作+今天未确认） ----

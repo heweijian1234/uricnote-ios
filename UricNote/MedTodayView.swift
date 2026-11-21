@@ -16,7 +16,7 @@ struct MedTodayView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(plan.name) \(plan.dose)")
                             .font(.body.weight(.semibold))
-                        Text("每天 \(plan.timesPerDay) 次 · 开始于 \(plan.startDate.formatted(date: .abbreviated, time: .omitted))")
+                        Text(L("\(plan.timesPerDay)× daily · started \(plan.startDate.formatted(date: .abbreviated, time: .omitted))", "每天 \(plan.timesPerDay) 次 · 开始于 \(plan.startDate.formatted(date: .abbreviated, time: .omitted))"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -27,30 +27,30 @@ struct MedTodayView: View {
                                 Button {
                                     markSlot(t.slot)
                                 } label: {
-                                    Label("记\(Store.medSlotLabel(t.slot))已吃", systemImage: "pills")
+                                    Label(L("Log \(Store.medSlotLabel(t.slot)) as taken", "记\(Store.medSlotLabel(t.slot))已吃"), systemImage: "pills")
                                         .font(.callout.weight(.semibold))
                                 }
                                 .buttonStyle(.borderedProminent)
                             }
                         }
                     } else {
-                        Label("今天都记完了 ✓", systemImage: "checkmark.seal.fill")
+                        Label(L("All logged today ✓", "今天都记完了 ✓"), systemImage: "checkmark.seal.fill")
                             .foregroundColor(.success)
                     }
                 } header: {
-                    Text("当前使用药物药量")
+                    Text(L("Current medication & dose", "当前使用药物药量"))
                 }
                 Section {
-                    Button("停用这个药计划", role: .destructive) {
+                    Button(L("Stop this medication plan", "停用这个药计划"), role: .destructive) {
                         stopPlan(plan)
                     }
                 } footer: {
-                    Text("停药前请看「误区」卡 #2：不疼了不等于好了——停药后多数人半年内复发。（本提示为患者共识科普，具体请遵医嘱）")
+                    Text(L("Before stopping meds, see Myth #2: pain-free ≠ cured — most people flare again within 6 months after stopping. (Follow your doctor.)", "停药前请看「误区」卡 #2：不疼了不等于好了——停药后多数人半年内复发。（本提示为患者共识科普，具体请遵医嘱）"))
                 }
                 // 健哥11-21令8：吃药闹钟提醒（用户自定义，每天响，最多3个）
                 Section {
                     ForEach(plan.reminderTimes.indices, id: \.self) { idx in
-                        DatePicker("闹钟 \(idx + 1)", selection: Binding(
+                        DatePicker(L("Alarm \(idx + 1)", "闹钟 \(idx + 1)"), selection: Binding(
                             get: { store.medPlans.first(where: { $0.id == plan.id })?.reminderTimes[idx] ?? plan.reminderTimes[idx] },
                             set: { nv in
                                 if let i = store.medPlans.firstIndex(where: { $0.id == plan.id }) {
@@ -73,7 +73,7 @@ struct MedTodayView: View {
                                 scheduleMedReminder()
                             }
                         } label: {
-                            Label("加一个闹钟（最多3个）", systemImage: "alarm.badge.plus")
+                            Label(L("Add an alarm (max 3)", "加一个闹钟（最多3个）"), systemImage: "alarm.badge.plus")
                         }
                     }
                     if plan.reminderTimes.count > 1 {
@@ -84,23 +84,23 @@ struct MedTodayView: View {
                                 scheduleMedReminder()
                             }
                         } label: {
-                            Label("删最后一个闹钟", systemImage: "alarm.badge.minus")
+                            Label(L("Delete last alarm", "删最后一个闹钟"), systemImage: "alarm.badge.minus")
                         }
                     }
                 } header: {
-                    Text("吃药闹钟提醒（每天）")
+                    Text(L("Medication reminders (daily)", "吃药闹钟提醒（每天）"))
                 } footer: {
-                    Text("到点提醒吃药——时间自己定，最多 3 个。")
+                    Text(L("Medication reminders at your own times — up to 3.", "到点提醒吃药——时间自己定，最多 3 个。"))
                 }
             } else {
                 Section {
-                    Button("添加当前使用药物药量") { showEditor = true }
+                    Button(L("Add current medication & dose", "添加当前使用药物药量")) { showEditor = true }
                 } footer: {
-                    Text("填一次默认长期用，可随时改。提醒+依从率组合才有效（RCT 实证：单提醒无效）——依从率曲线会给医生看，也是给你自己看的证据。")
+                    Text(L("Set once, use long-term, change anytime. Reminders + adherence tracking work together (RCT evidence). The adherence curve is for your doctor — and for you.", "填一次默认长期用，可随时改。提醒+依从率组合才有效（RCT 实证：单提醒无效）——依从率曲线会给医生看，也是给你自己看的证据。"))
                 }
             }
 
-            Section("近 7 天（点打卡记录可撤销）") {
+            Section(L("Last 7 days (tap a check to undo)", "近 7 天（点打卡记录可撤销）")) {
                 ForEach(last7Days, id: \.self) { day in
                     let logs = store.medLogs.filter { Calendar.current.isDate($0.date, equalTo: day, toGranularity: .day) && $0.taken }
                     HStack {
@@ -124,7 +124,7 @@ struct MedTodayView: View {
                 }
             }
         }
-        .navigationTitle("当前使用药物药量")
+        .navigationTitle(L("Current medication & dose", "当前使用药物药量"))
         .sheet(isPresented: $showEditor) { MedPlanEditor() }
     }
 
@@ -139,9 +139,9 @@ struct MedTodayView: View {
         store.medLogs.append(log)
         Haptic.success()
         if store.todayMedTodos.allSatisfy({ $0.done }) {
-            UricCelebrate.show("今天的药都记完了 ✓")
+            UricCelebrate.show(L("All meds logged today ✓", "今天的药都记完了 ✓"))
         } else {
-            UricCelebrate.show("记好了——\(Store.medSlotLabel(slot))这次打卡完成")
+            UricCelebrate.show(L("Done — \(Store.medSlotLabel(slot)) dose logged", "记好了——\(Store.medSlotLabel(slot))这次打卡完成"))
         }
     }
 
@@ -165,7 +165,7 @@ struct MedTodayView: View {
                 let content = UNMutableNotificationContent()
                 content.title = "UricNote"
                 let tf = DateFormatter(); tf.timeStyle = .short
-                content.body = "\(activePlan?.name ?? "药") \(activePlan?.dose ?? "")——到点了，吃完来打个卡。（\(tf.string(from: t))）"
+                content.body = "\(activePlan?.name ?? L("meds", "药")) \(activePlan?.dose ?? "") — time to take it and check in. (\(tf.string(from: t)))"
                 content.sound = .default
                 var comps = DateComponents()
                 comps.hour = Calendar.current.component(.hour, from: t)
@@ -184,34 +184,34 @@ struct MedTodayView: View {
 struct MedPlanEditor: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
-    @State private var name = "非布司他"
+    @State private var name = L("Febuxostat", "非布司他")
     @State private var dose = "40mg"
     @State private var times = 1
 
-    private let commonMeds = ["非布司他", "别嘌醇", "秋水仙碱", "苯溴马隆"]
+    private let commonMeds = [L("Febuxostat", "非布司他"), L("Allopurinol", "别嘌醇"), L("Colchicine", "秋水仙碱"), L("Benzbromarone", "苯溴马隆")]
 
     var body: some View {
         Form {
             Section {
-                Picker("常见药", selection: $name) {
+                Picker(L("Common meds", "常见药"), selection: $name) {
                     ForEach(commonMeds, id: \.self) { Text($0).tag($0) }
-                    Text("自定义").tag("自定义")
+                    Text(L("Custom", "自定义")).tag("自定义")
                 }
-                if name == "自定义" {
-                    TextField("输入药名", text: $name)
+                if name == L("Custom", "自定义") {
+                    TextField(L("Medication name", "输入药名"), text: $name)
                 }
             } header: {
-                Text("药物名")
+                Text(L("Medication name", "药物名"))
             }
             Section {
-                TextField("例如 40mg", text: $dose)
-                Stepper("每天 \(times) 次", value: $times, in: 1...3)
+                TextField(L("e.g. 40mg", "例如 40mg"), text: $dose)
+                Stepper(L("\(times)× daily", "每天 \(times) 次"), value: $times, in: 1...3)
             } header: {
-                Text("剂量")
+                Text(L("Dose", "剂量"))
             } footer: {
-                Text("一天几次就打几次卡（早晚各一次就选 2 次）。")
+                Text(L("Log once per dose (pick 2 for morning & evening).", "一天几次就打几次卡（早晚各一次就选 2 次）。"))
             }
-            Button("保存") {
+            Button(L("Save", "保存")) {
                 let plan = MedPlan(
                     name: name, dose: dose, timesPerDay: times,
                     reminderTimes: [Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())!],
@@ -220,10 +220,10 @@ struct MedPlanEditor: View {
                 store.medPlans.append(plan)
                 store.save()
                 MedTodayView().scheduleMedReminder()
-                UricCelebrate.show("已记录当前用药。")
+                UricCelebrate.show(L("Current medication recorded.", "已记录当前用药。"))
                 dismiss()
             }
         }
-        .navigationTitle("添加当前使用药物药量")
+        .navigationTitle(L("Add current medication & dose", "添加当前使用药物药量"))
     }
 }
