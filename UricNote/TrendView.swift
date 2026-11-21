@@ -456,14 +456,14 @@ enum ClinicReportGenerator {
         var daySet = Set<Date>()
         for d in store.waterDays { daySet.insert(Calendar.current.startOfDay(for: d.day)) }
         for d in store.foodDays { daySet.insert(Calendar.current.startOfDay(for: d.day)) }
-        for d in store.sleepLogs { daySet.insert(Calendar.current.startOfDay(for: d.date)) }
+        for d in store.sleepLogs { daySet.insert(Calendar.current.startOfDay(for: d.night)) }
         for d in store.weightLogs { daySet.insert(Calendar.current.startOfDay(for: d.date)) }
         let allDays = daySet.sorted()
         let cal = Calendar.current
         for day in allDays {
             let w = store.waterDays.first { cal.isDate($0.day, inSameDayAs: day) }
             let fd = store.foodDays.first { cal.isDate($0.day, inSameDayAs: day) }
-            let slg = store.sleepLogs.first { cal.isDate($0.date, inSameDayAs: day) }
+            let slg = store.sleepLogs.first { cal.isDate($0.night, inSameDayAs: day) }
             let wl = store.weightLogs.first { cal.isDate($0.date, inSameDayAs: day) }
             let foodStr: String
             if let fd {
