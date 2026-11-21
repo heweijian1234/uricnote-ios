@@ -8,7 +8,13 @@ enum AppLang {
     case en
     case zh
 
-    static let current: AppLang = .en   // 🔴上架版=英文。中文测试版改回 .zh
+    // 健哥11-22令：中文版自己用——语言跟随手机系统（中文系统=中文，其他=英文上架版）
+    // 上架只上一份包：美区用户英文，健哥手机中文，不用维护两个版本
+    static let current: AppLang = {
+        // Bundle.preferredLanguages 首选语言含 zh（简/繁/中国区）即中文
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        return preferred.hasPrefix("zh") ? .zh : .en
+    }()
 }
 
 func L(_ en: String, _ zh: String) -> String {
