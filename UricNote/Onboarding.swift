@@ -158,7 +158,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("这不只是一份记录。")
                     .font(.title.bold())
-                Text("这是一次尊重身体，自我救赎的蜕变举动。愿你能更幸福的去体验生活。")
+                Text("这是一次尊重身体，自我救赎的蜕变。愿你能更幸福的生活。")
                     .font(.body)
                     .foregroundColor(.secondary)
 
@@ -166,13 +166,13 @@ struct OnboardingView: View {
 
                 Text("我们相信")
                     .font(.headline)
-                Text("只需要养成习惯。")
+                Text("尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好，只需要养成习惯。")
                     .font(.callout)
 
                 Text("现在就能用")
                     .font(.headline)
-                visionRow(icon: "fork.knife", text: "食物嘌呤清单，区分建议食用、不建议食用，带临床指南背书")
-                visionRow(icon: "brain", text: "每天回忆记录，辅助医生寻找你疼痛的嘌呤因子")
+                visionRow(icon: "fork.knife", text: "食物嘌呤清单，带临床指南背书")
+                visionRow(icon: "brain", text: "每天回忆记录，寻找疼痛的嘌呤因子进行改善")
                 visionRow(icon: "pills", text: "提醒吃药，记录喝水量习惯")
                 visionRow(icon: "doc.text", text: "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议")
 
@@ -181,7 +181,7 @@ struct OnboardingView: View {
                 visionRow(icon: "chart.line.uptrend.xyaxis", text: "会随时间记录，画出你的蜕变之路")
                 visionRow(icon: "calendar", text: "7 天后，看到你的习惯趋势线")
                 visionRow(icon: "sparkles", text: "一个月后，发现疼痛前共同吃了什么")
-                visionRow(icon: "figure.walk", text: "更远处：我是一直陪你走过来的病友")
+                visionRow(icon: "figure.walk", text: "更远处：我是一直陪你走过来的朋友")
 
                 Text("选择我的理由")
                     .font(.headline)

@@ -41,17 +41,6 @@ struct LearnView: View {
                     NavigationLink("嘌呤食物库") { PurineListView() }
                 }
 
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("UricNote v0.1.0").font(.caption.weight(.medium))
-                            Text("© 2026 WEI JIAN HE · 记录工具，不构成诊疗建议").font(.caption2).foregroundColor(.secondary)
-                            Text("数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验").font(.caption2).foregroundColor(.secondary)
-                        }
-                        Spacer()
-                    }
-                }
-
                 Section("和你一起变好") {
                     // v11.1 #6：反馈独立一级页（健哥令：需要足够的用户反馈）
                     NavigationLink {
@@ -65,11 +54,6 @@ struct LearnView: View {
                             }
                         }
                     }
-                    Button("🔧 演示：断记确认（测试用）") {
-                        Store.shared.meta.lastOpenedAt = Calendar.current.date(byAdding: .hour, value: -50, to: Date())
-                        Store.shared.save()
-                    }
-                    .foregroundColor(.warn)
                     Button("给我们评分") {
                         // 健哥11-21令修：评分弹窗有365天3次配额，满了就静默——加跳App Store评论页兜底（永远有效）
                         FeedbackHelper.requestReview()
@@ -78,6 +62,17 @@ struct LearnView: View {
                         }
                     }
                     .foregroundColor(.brand)
+                }
+
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("UricNote v0.1.0").font(.caption.weight(.medium))
+                            Text("© 2026 WEI JIAN HE · 记录工具，不构成诊疗建议").font(.caption2).foregroundColor(.secondary)
+                            Text("数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验").font(.caption2).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
                 }
             }
             .navigationTitle("了解")
@@ -95,18 +90,18 @@ struct VisionPageView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("这不只是一份记录。")
                     .font(.title.bold())
-                Text("这是一次尊重身体，自我救赎的蜕变举动。愿你能更幸福的去体验生活。")
+                Text("这是一次尊重身体，自我救赎的蜕变。愿你能更幸福的生活。")
                     .font(.body)
                     .foregroundColor(.secondary)
 
                 Divider()
 
                 Text("我们相信").font(.headline)
-                Text("只需要养成习惯。").font(.callout)
+                Text("尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好，只需要养成习惯。").font(.callout)
 
                 Text("现在就能用").font(.headline)
-                visionRow("fork.knife", "食物嘌呤清单，区分建议食用、不建议食用，带临床指南背书")
-                visionRow("brain", "每天回忆记录，辅助医生寻找你疼痛的嘌呤因子")
+                visionRow("fork.knife", "食物嘌呤清单，带临床指南背书")
+                visionRow("brain", "每天回忆记录，寻找疼痛的嘌呤因子进行改善")
                 visionRow("pills", "提醒吃药，记录喝水量习惯")
                 visionRow("doc.text", "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议")
 
@@ -114,7 +109,7 @@ struct VisionPageView: View {
                 visionRow("chart.line.uptrend.xyaxis", "会随时间记录，画出你的蜕变之路")
                 visionRow("calendar", "7 天后，看到你的习惯趋势线")
                 visionRow("sparkles", "一个月后，发现疼痛前共同吃了什么")
-                visionRow("figure.walk", "更远处：我是一直陪你走过来的病友")
+                visionRow("figure.walk", "更远处：我是一直陪你走过来的朋友")
 
                 Text("选择我的理由").font(.headline)
                 visionRow("person.crop.circle.badge.checkmark", "开发者本人就是高尿酸痛风患者，正在改善的路上，此 App 是自用也是想帮助更多患友")
@@ -224,29 +219,29 @@ struct PurineListView: View {
     @State private var query = ""
     // 🔴健哥令 2026-11-15：默认先看"能吃什么"（绿灯优先）——患者打开 food 库全是禁忌会心情糟糕/抗拒（v8 情绪设计：先给希望再给边界）
     @State private var tab = 0   // 0=绿灯能吃 1=黄灯适量 2=红灯注意
-    // 健哥11-21令：分类导航（全部/蔬菜/水果/肉类/酒类/海鲜/咖啡/坚果/面包/汤类/饮料/奶茶/茶叶/饮食场景）
+    // 健哥11-21令：分类导航（健哥11-21晚令+零食）
     @State private var category = "全部"
-    static let categories = ["全部", "蔬菜", "水果", "肉类", "酒类", "海鲜", "咖啡", "坚果", "面包", "汤类", "饮料", "奶茶", "茶叶", "饮食场景", "其他"]
+    static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]
 
     var body: some View {
         List {
-            Picker("", selection: $tab) {
-                Text("✓ 能吃").tag(0)
-                Text("适量").tag(1)
-                Text("注意").tag(2)
-            }
-            .pickerStyle(.segmented)
-            .listRowBackground(Color.clear)
-            // 健哥11-21令：分类导航条（横向滚动 chip）
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+            Section {
+                Picker("", selection: $tab) {
+                    Text("✓ 能吃").tag(0)
+                    Text("适量").tag(1)
+                    Text("注意").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                // 健哥11-21晚令3：分类全展示（网格 chips，不横拉——横拉用户看不见）
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                     ForEach(Self.categories, id: \.self) { c in
                         Button {
                             category = c
                         } label: {
                             Text(c)
                                 .font(.caption.weight(.medium))
-                                .padding(.horizontal, 12)
+                                .frame(maxWidth: .infinity)
                                 .padding(.vertical, 6)
                                 .background(category == c ? Color.brand : Color.gray.opacity(0.12))
                                 .foregroundColor(category == c ? .white : .primary)
@@ -255,9 +250,14 @@ struct PurineListView: View {
                     }
                 }
                 .padding(.vertical, 2)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            } header: {
+                Text("嘌呤食物库")
+            } footer: {
+                // 健哥11-21晚令1：添加按钮说明
+                Text(tab == 0 ? "" : "点「添加」把食物加进仪表盘 → 饮食页的「我的日常饮食表」，天天点选不用翻库。")
             }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
             let items = filtered.sorted { $0.name < $1.name }
             if items.isEmpty {
@@ -273,6 +273,27 @@ struct PurineListView: View {
                         circle(for: item.level)
                         Text(item.name).font(.body.weight(.medium))
                         Spacer()
+                        // 健哥11-21晚令1：右侧"添加"按钮（仅适量/注意列——能吃列不需要记）
+                        if tab != 0 {
+                            if store.meta.dailyFoods.contains(item.name) {
+                                Button("已添加") {
+                                    store.meta.dailyFoods.removeAll { $0 == item.name }
+                                    store.save()
+                                }
+                                .font(.caption.weight(.semibold))
+                                .buttonStyle(.bordered)
+                                .tint(.brand)
+                            } else {
+                                Button("添加") {
+                                    store.meta.dailyFoods.append(item.name)
+                                    store.save()
+                                    UricCelebrate.show("已加到日常饮食表")
+                                }
+                                .font(.caption.weight(.semibold))
+                                .buttonStyle(.borderedProminent)
+                                .tint(.brand)
+                            }
+                        }
                         Text(levelName(item.level))
                             .font(.caption)
                             .foregroundColor(color(for: item.level))
@@ -387,12 +408,10 @@ enum PurineDatabase {
         .init(name: "菠萝", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "芒果", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
         .init(name: "红枣（鲜）", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "白菜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
         .init(name: "生菜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
         .init(name: "油麦菜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "空心菜", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
         .init(name: "芹菜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "黄瓜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
         .init(name: "冬瓜", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
         .init(name: "南瓜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
         .init(name: "丝瓜", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
@@ -400,25 +419,17 @@ enum PurineDatabase {
         .init(name: "青椒", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "白萝卜", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "西红柿", uricPer100g: 4, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "西兰花", uricPer100g: 20, level: "green", sourceTag: "ACR 2020"),
         .init(name: "花菜", uricPer100g: 22, level: "green", sourceTag: "ACR 2020"),
         .init(name: "玉米", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
         .init(name: "山药", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
         .init(name: "芋头", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
         .init(name: "藕", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "红薯", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "土豆", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
         .init(name: "小米粥", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
         .init(name: "燕麦", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "米饭", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "面条", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
         .init(name: "馒头", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "低脂牛奶", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "脱脂酸奶", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
         .init(name: "酸奶", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "鸡蛋", uricPer100g: 2, level: "green", sourceTag: "ACR 2020"),
         .init(name: "蛋白（蛋清）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "樱桃", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "车厘子", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "柠檬水（无糖）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "白开水", uricPer100g: 0, level: "green", sourceTag: "ACR 2020"),
@@ -491,7 +502,91 @@ enum PurineDatabase {
         .init(name: "螺蛳粉（汤）", uricPer100g: 95, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "酸辣粉", uricPer100g: 20, level: "green", sourceTag: "ACR 2020"),
         .init(name: "凉皮", uricPer100g: 15, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "米线（清汤）", uricPer100g: 14, level: "green", sourceTag: "ACR 2020"),
+        .init(name: "米线（清汤）", uricPer100g: 14, level: "green", sourceTag: "ACR 2020"),        .init(name: "伏特加", uricPer100g: 0, level: "red", sourceTag: "ACR 2020"),
+        .init(name: "黑啤酒（世涛/黑啤）", uricPer100g: 35, level: "red", sourceTag: "日本食品嘌呤表"),
+        .init(name: "梅酒", uricPer100g: 10, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "黄酒", uricPer100g: 30, level: "red", sourceTag: "ACR 2020"),
+        .init(name: "红酒（干红）", uricPer100g: 5, level: "yellow", sourceTag: "ACR 2020"),
+        .init(name: "苏打水", uricPer100g: 0, level: "green", sourceTag: "USDA"),
+        .init(name: "矿泉水", uricPer100g: 0, level: "green", sourceTag: "—"),
+        .init(name: "布丁", uricPer100g: 5, level: "green", sourceTag: "USDA"),
+        .init(name: "热狗肠", uricPer100g: 145, level: "red", sourceTag: "Drugs.com"),
+        .init(name: "寿司（综合）", uricPer100g: 65, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "鳗鱼饭", uricPer100g: 120, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "天妇罗", uricPer100g: 60, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "韩式烤肉（五花肉）", uricPer100g: 130, level: "red", sourceTag: "估算·卫健委基表"),
+        .init(name: "韩式部队锅", uricPer100g: 110, level: "red", sourceTag: "估算·复合"),
+        .init(name: "泡菜", uricPer100g: 12, level: "green", sourceTag: "韩国食品成分表"),
+        .init(name: "石锅拌饭", uricPer100g: 45, level: "green", sourceTag: "估算·复合"),
+        .init(name: "生蚝（牡蛎）", uricPer100g: 165, level: "red", sourceTag: "Drugs.com"),
+        .init(name: "扇贝", uricPer100g: 150, level: "red", sourceTag: "Drugs.com"),
+        .init(name: "鲍鱼", uricPer100g: 110, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "鲈鱼", uricPer100g: 100, level: "yellow", sourceTag: "日本食品嘌呤表"),
+        .init(name: "鱼露", uricPer100g: 200, level: "red", sourceTag: "东南亚食品表"),
+        .init(name: "虾酱", uricPer100g: 220, level: "red", sourceTag: "卫健委2024"),
+        .init(name: "鸡精/浓汤宝", uricPer100g: 500, level: "red", sourceTag: "Drugs.com"),
+        .init(name: "酵母粉（烘焙/啤酒酵母）", uricPer100g: 700, level: "red", sourceTag: "Drugs.com"),
+        .init(name: "咖啡（美式/黑咖）", uricPer100g: 0, level: "green", sourceTag: "NEJM 咖啡与痛风研究"),
+        .init(name: "燕麦奶", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "杏仁奶", uricPer100g: 0, level: "green", sourceTag: "USDA"),
+        .init(name: "意大利面", uricPer100g: 20, level: "green", sourceTag: "USDA"),
+        .init(name: "披萨", uricPer100g: 40, level: "yellow", sourceTag: "估算·复合"),
+        .init(name: "汉堡", uricPer100g: 55, level: "yellow", sourceTag: "估算·复合"),
+        .init(name: "墨西哥卷饼", uricPer100g: 45, level: "yellow", sourceTag: "估算·复合"),
+        .init(name: "希腊酸奶", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "开菲尔发酵乳", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "樱桃（欧洲酸樱桃）", uricPer100g: 2, level: "green", sourceTag: "USDA"),
+        .init(name: "树莓", uricPer100g: 5, level: "green", sourceTag: "USDA"),
+        .init(name: "黑莓", uricPer100g: 5, level: "green", sourceTag: "USDA"),
+        .init(name: "无花果", uricPer100g: 15, level: "green", sourceTag: "USDA"),
+        .init(name: "牛油果", uricPer100g: 10, level: "green", sourceTag: "USDA"),
+        .init(name: "菠萝蜜", uricPer100g: 18, level: "green", sourceTag: "USDA"),
+        .init(name: "山竹", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "番石榴", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "龙眼", uricPer100g: 15, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "红毛丹", uricPer100g: 15, level: "green", sourceTag: "USDA"),
+        .init(name: "紫甘蓝", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "羽衣甘蓝", uricPer100g: 10, level: "green", sourceTag: "USDA"),
+        .init(name: "秋葵", uricPer100g: 10, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "豆苗", uricPer100g: 60, level: "yellow", sourceTag: "卫健委2024"),
+        .init(name: "荷兰豆", uricPer100g: 40, level: "green", sourceTag: "USDA"),
+        .init(name: "蘑菇（口蘑）", uricPer100g: 50, level: "yellow", sourceTag: "卫健委2024"),
+        .init(name: "香菇（干）", uricPer100g: 350, level: "red", sourceTag: "卫健委2024（干品浓缩）"),
+        .init(name: "木耳（水发）", uricPer100g: 15, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "银耳（水发）", uricPer100g: 15, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "鸡蛋（全蛋）", uricPer100g: 2, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "鹌鹑蛋", uricPer100g: 5, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "牛肉干", uricPer100g: 250, level: "red", sourceTag: "脱水浓缩·Drugs.com"),
+        .init(name: "猪肉脯", uricPer100g: 240, level: "red", sourceTag: "脱水浓缩·Drugs.com"),
+        .init(name: "鸡胸肉", uricPer100g: 130, level: "yellow", sourceTag: "卫健委2024"),
+        .init(name: "鸡腿肉", uricPer100g: 140, level: "yellow", sourceTag: "卫健委2024"),
+        .init(name: "鸭血", uricPer100g: 30, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "羊肉串", uricPer100g: 150, level: "red", sourceTag: "估算·烧烤浓缩"),
+        .init(name: "烤鸭", uricPer100g: 145, level: "red", sourceTag: "估算·卫健委基表"),
+        .init(name: "鹅肝", uricPer100g: 400, level: "red", sourceTag: "Drugs.com（内脏最高档）"),
+        .init(name: "夜宵·炒粉/炒面", uricPer100g: 40, level: "yellow", sourceTag: "估算·复合"),
+        .init(name: "夜宵·烤串（综合）", uricPer100g: 160, level: "red", sourceTag: "估算·复合"),
+        .init(name: "夜宵·小龙虾", uricPer100g: 140, level: "red", sourceTag: "卫健委2024"),
+        .init(name: "酒会·下酒拼盘", uricPer100g: 150, level: "red", sourceTag: "估算·复合"),
+        .init(name: "婚宴·宴席（综合）", uricPer100g: 130, level: "red", sourceTag: "估算·复合"),
+        .init(name: "晚宴·西式套餐", uricPer100g: 100, level: "yellow", sourceTag: "估算·复合"),
+        .init(name: "聚会·火锅（已在场景）", uricPer100g: 200, level: "red", sourceTag: "估算·汤底浓缩"),
+        .init(name: "蛋糕（奶油）", uricPer100g: 8, level: "green", sourceTag: "USDA"),
+        .init(name: "提拉米苏", uricPer100g: 10, level: "green", sourceTag: "USDA"),
+        .init(name: "马卡龙", uricPer100g: 5, level: "green", sourceTag: "USDA"),
+        .init(name: "月饼", uricPer100g: 15, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "绿豆糕", uricPer100g: 20, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "蛋黄酥", uricPer100g: 15, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "薯片", uricPer100g: 15, level: "green", sourceTag: "USDA（嘌呤低但高脂高盐）"),
+        .init(name: "巧克力（黑巧 70%）", uricPer100g: 20, level: "green", sourceTag: "USDA"),
+        .init(name: "冰淇淋", uricPer100g: 5, level: "green", sourceTag: "USDA（高糖注意）"),
+        .init(name: "果冻", uricPer100g: 2, level: "green", sourceTag: "USDA"),
+        .init(name: "辣条", uricPer100g: 30, level: "yellow", sourceTag: "估算·调味浓缩"),
+        .init(name: "锅巴", uricPer100g: 25, level: "green", sourceTag: "卫健委2024"),
+        .init(name: "海苔", uricPer100g: 100, level: "yellow", sourceTag: "日本食品嘌呤表（干品）"),
+        .init(name: "话梅", uricPer100g: 10, level: "green", sourceTag: "USDA"),
+        .init(name: "坚果混合装", uricPer100g: 30, level: "green", sourceTag: "USDA（适量·热量高）"),
+
     ]
 }
 

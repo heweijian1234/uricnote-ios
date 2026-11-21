@@ -684,6 +684,10 @@ struct FoodPage: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    // 健哥11-21晚令12：戒了的能删（左滑删同款——管理入口里删，日常区不放破坏性手势）
+                    Text("要删除某项：点下方「添加日常食物」进管理页删除（戒了的就删掉，表只留真在吃的）")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
                 // 健哥11-21令5：添加日常食物入口（下方）
                 Button {
@@ -897,59 +901,84 @@ struct WeightEditor: View {
 }
 
 
-// MARK: - 日常食物选择器（健哥11-21令5/6：从嘌呤库选加到"我的日常饮食表"）
-// 统一从食物库选择——避免每人用词不一（啤酒≠啤洒≠beer 是三个不同条目）
+// MARK: - 日常食物管理页（健哥11-21晚令12重做：适量+注意两列·带分类·内容与嘌呤食物库一致·可删）
+// 数据源=PurineDatabase（与了解页嘌呤食物库同一份——永久一致）
 
 struct DailyFoodPickerSheet: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
     @State private var query = ""
+    @State private var category = "全部"
+    @State private var tab = 1   // 0=适量 1=注意（默认注意——健哥令仅这两列）
 
-    /// 全库候选（红+黄+绿全开——日常表不只记坏的，好的也记）
-    private var candidates: [FoodItem] {
-        let all = FoodLibrary.redZone + FoodLibrary.yellowZone + FoodLibrary.greenZone
-        guard !query.isEmpty else { return all }
-        return all.filter { $0.name.contains(query) }
+    static let categories = ["全部", "蔬菜", "水果", "肉类", "海鲜", "酒类", "饮料", "奶茶", "茶叶", "咖啡", "坚果", "零食", "面包", "汤类", "饮食场景", "其他"]
+
+    /// 候选=嘌呤食物库的适量+注意（yellow+red）——与库完全一致
+    private var candidates: [PurineItem] {
+        if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
+        let levelKey = ["yellow", "red"][tab]
+        let byQuery = store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+        let byCategory = category == "全部" ? byQuery : byQuery.filter { $0.inferredCategory == category }
+        return byCategory.filter { $0.level == levelKey }.sorted { $0.name < $1.name }
     }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(candidates) { item in
-                        Button {
-                            if store.meta.dailyFoods.contains(item.name) {
-                                store.meta.dailyFoods.removeAll { $0 == item.name }
-                            } else {
-                                store.meta.dailyFoods.append(item.name)
-                            }
-                            store.save()
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name).foregroundColor(.primary)
-                                    if let note = item.note {
-                                        Text(note).font(.caption2).foregroundColor(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                Circle()
-                                    .fill(item.level == "red" ? Color.danger : item.level == "yellow" ? Color.warn : Color.success)
-                                    .frame(width: 10, height: 10)
-                                if store.meta.dailyFoods.contains(item.name) {
-                                    Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
-                                }
+                    Picker("", selection: $tab) {
+                        Text("适量").tag(0)
+                        Text("注意").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+                        ForEach(Self.categories, id: \.self) { c in
+                            Button {
+                                category = c
+                            } label: {
+                                Text(c)
+                                    .font(.caption.weight(.medium))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                    .background(category == c ? Color.brand : Color.gray.opacity(0.12))
+                                    .foregroundColor(category == c ? .white : .primary)
+                                    .clipShape(Capsule())
                             }
                         }
                     }
+                    .listRowBackground(Color.clear)
                 } header: {
-                    Text("从嘌呤食物库选择（加入后出现在饮食页）")
+                    Text("管理日常食物（勾选=在表里）")
                 } footer: {
-                    Text("选你平常真吃到的——红点=高嘌呤注意，黄=适量，绿=推荐。选错了回饮食页左滑删。")
+                    Text("与嘌呤食物库内容一致。取消勾选=从日常饮食表删除（戒了的就删掉）。")
+                }
+
+                ForEach(candidates) { item in
+                    Button {
+                        if store.meta.dailyFoods.contains(item.name) {
+                            store.meta.dailyFoods.removeAll { $0 == item.name }
+                        } else {
+                            store.meta.dailyFoods.append(item.name)
+                        }
+                        store.save()
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name).foregroundColor(.primary)
+                                Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.sourceTag)")
+                                    .font(.caption2).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if store.meta.dailyFoods.contains(item.name) {
+                                Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
+                            }
+                        }
+                    }
                 }
             }
             .searchable(text: $query, prompt: "搜食物")
-            .navigationTitle("添加日常食物")
+            .navigationTitle("管理日常食物")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -960,38 +989,51 @@ struct DailyFoodPickerSheet: View {
     }
 }
 
-// MARK: - 场景选择器（健哥11-21令7：场景自建——本次用内置四场景起步，食物库改版后接入全量）
+// MARK: - 场景管理页（健哥11-21晚令12重做：=嘌呤食物库的饮食场景类·与库一致·可删）
+// 场景源=种子库中 inferredCategory=="饮食场景" 的全部条目（含新扩的寿司/日料/韩料/酒会/晚宴/夜宵/聚会/婚宴）
 
 struct ScenePickerSheet: View {
     @ObservedObject var store = Store.shared
     @Environment(\.dismiss) var dismiss
 
+    /// 嘌呤食物库里的全部饮食场景条目（适量+注意两列下的场景类）
+    private var sceneItems: [PurineItem] {
+        if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
+        return store.purineItems
+            .filter { $0.inferredCategory == "饮食场景" }
+            .sorted { $0.name < $1.name }
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(FoodLibrary.scenes, id: \.name) { s in
+                    ForEach(sceneItems) { item in
                         Button {
-                            if store.meta.customScenes.contains(s.name) {
-                                store.meta.customScenes.removeAll { $0 == s.name }
+                            if store.meta.customScenes.contains(item.name) {
+                                store.meta.customScenes.removeAll { $0 == item.name }
                             } else {
-                                store.meta.customScenes.append(s.name)
+                                store.meta.customScenes.append(item.name)
                             }
                             store.save()
                         } label: {
                             HStack {
-                                Text(s.name).foregroundColor(.primary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name).foregroundColor(.primary)
+                                    Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))")
+                                        .font(.caption2).foregroundColor(.secondary)
+                                }
                                 Spacer()
-                                if store.meta.customScenes.contains(s.name) {
+                                if store.meta.customScenes.contains(item.name) {
                                     Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
                                 }
                             }
                         }
                     }
                 } header: {
-                    Text("选择你的场景（今天吃的是一整场）")
+                    Text("管理场景（勾选=出现在饮食页）")
                 } footer: {
-                    Text("食物库改版后会加入更多场景可选。没覆盖的用「其他（自定义）」兜底。")
+                    Text("与嘌呤食物库的饮食场景同步。取消勾选=从饮食页删除。")
                 }
             }
             .navigationTitle("管理场景")
@@ -1002,5 +1044,9 @@ struct ScenePickerSheet: View {
                 }
             }
         }
+    }
+
+    private func levelName(_ l: String) -> String {
+        l == "red" ? "注意" : l == "yellow" ? "适量" : "能吃"
     }
 }
