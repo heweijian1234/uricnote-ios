@@ -453,18 +453,24 @@ enum ClinicReportGenerator {
         // ── 每日生活方式 ──
         rows.append("")
         rows.append("\(T("DAILY", "每日")),\(T("Date", "日期")),\(T("Water ml", "饮水 ml")),\(T("Water mode", "饮水方式")),\(T("High-purine logged", "碰高嘌呤")),\(T("Sleep bucket", "入睡档")),\(T("Weight kg", "体重 kg"))")
-        let allDays = Set(store.waterDays.map { Calendar.current.startOfDay(for: $0.day) } + store.foodDays.map { Calendar.current.startOfDay(for: $0.day) } + store.sleepLogs.map { Calendar.current.startOfDay(for: $0.date) } + store.weightLogs.map { Calendar.current.startOfDay(for: $0.date) }).sorted()
+        var daySet = Set<Date>()
+        for d in store.waterDays { daySet.insert(Calendar.current.startOfDay(for: d.day)) }
+        for d in store.foodDays { daySet.insert(Calendar.current.startOfDay(for: d.day)) }
+        for d in store.sleepLogs { daySet.insert(Calendar.current.startOfDay(for: d.date)) }
+        for d in store.weightLogs { daySet.insert(Calendar.current.startOfDay(for: d.date)) }
+        let allDays = daySet.sorted()
+        let cal = Calendar.current
         for day in allDays {
-            let w = store.waterDays.first { Calendar.current.isDate($0.day, inSameDayAs: day) }
-            let f = store.foodDays.first { Calendar.current.isDate($0.day, inSameDayAs: day) }
-            let sl = store.sleepLogs.first { Calendar.current.isDate($0.date, inSameDayAs: day) }
-            let wl = store.weightLogs.first { Calendar.current.isDate($0.date, inSameDayAs: day) }
+            let w = store.waterDays.first { cal.isDate($0.day, inSameDayAs: day) }
+            let fd = store.foodDays.first { cal.isDate($0.day, inSameDayAs: day) }
+            let slg = store.sleepLogs.first { cal.isDate($0.date, inSameDayAs: day) }
+            let wl = store.weightLogs.first { cal.isDate($0.date, inSameDayAs: day) }
             let foodStr: String
-            if let f {
-                if f.noTriggerToday { foodStr = T("none logged", "未碰") }
-                else { foodStr = esc((f.scenes + f.items).map(foodDisplayName).joined(separator: "; ")) }
+            if let fd {
+                if fd.noTriggerToday { foodStr = T("none logged", "未碰") }
+                else { foodStr = esc((fd.scenes + fd.items).map(foodDisplayName).joined(separator: "; ")) }
             } else { foodStr = "" }
-            rows.append("Daily,\(df.string(from: day)),\(w.map { String($0.totalMl) } ?? ""),\(w.map { $0.provenance == .estimated ? T("auto","沿用") : T("logged","实测") } ?? ""),\(foodStr),\(sl.map { ["<23","23-24","0-1",">1"][$0.bucket] } ?? ""),\(wl.map { String(format: "%.1f", $0.kg) } ?? "")")
+            rows.append("Daily,\(df.string(from: day)),\(w.map { String($0.totalMl) } ?? ""),\(w.map { $0.provenance == .estimated ? T("auto","沿用") : T("logged","实测") } ?? ""),\(foodStr),\(slg.map { ["<23","23-24","0-1",">1"][$0.bucket] } ?? ""),\(wl.map { String(format: "%.1f", $0.kg) } ?? "")")
         }
         return rows.joined(separator: "\n")
     }
