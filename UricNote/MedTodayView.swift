@@ -47,6 +47,51 @@ struct MedTodayView: View {
                 } footer: {
                     Text("停药前请看「误区」卡 #2：不疼了不等于好了——停药后多数人半年内复发。（本提示为患者共识科普，具体请遵医嘱）")
                 }
+                // 健哥11-21令8：吃药闹钟提醒（用户自定义，每天响，最多3个）
+                Section {
+                    ForEach(plan.reminderTimes.indices, id: \.self) { idx in
+                        DatePicker("闹钟 \(idx + 1)", selection: Binding(
+                            get: { store.medPlans.first(where: { $0.id == plan.id })?.reminderTimes[idx] ?? plan.reminderTimes[idx] },
+                            set: { nv in
+                                if let i = store.medPlans.firstIndex(where: { $0.id == plan.id }) {
+                                    store.medPlans[i].reminderTimes[idx] = nv
+                                    store.save()
+                                    scheduleMedReminder()
+                                }
+                            }
+                        ), displayedComponents: .hourAndMinute)
+                    }
+                    if plan.reminderTimes.count < 3 {
+                        Button {
+                            if let i = store.medPlans.firstIndex(where: { $0.id == plan.id }) {
+                                var base = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
+                                if !store.medPlans[i].reminderTimes.isEmpty {
+                                    base = store.medPlans[i].reminderTimes.last!.addingTimeInterval(3600)
+                                }
+                                store.medPlans[i].reminderTimes.append(base)
+                                store.save()
+                                scheduleMedReminder()
+                            }
+                        } label: {
+                            Label("加一个闹钟（最多3个）", systemImage: "alarm.badge.plus")
+                        }
+                    }
+                    if plan.reminderTimes.count > 1 {
+                        Button(role: .destructive) {
+                            if let i = store.medPlans.firstIndex(where: { $0.id == plan.id }) {
+                                store.medPlans[i].reminderTimes.removeLast()
+                                store.save()
+                                scheduleMedReminder()
+                            }
+                        } label: {
+                            Label("删最后一个闹钟", systemImage: "alarm.badge.minus")
+                        }
+                    }
+                } header: {
+                    Text("吃药闹钟提醒（每天）")
+                } footer: {
+                    Text("到点提醒吃药——时间自己定，最多 3 个。")
+                }
             } else {
                 Section {
                     Button("添加当前使用药物药量") { showEditor = true }
@@ -84,7 +129,8 @@ struct MedTodayView: View {
     }
 
     private var last7Days: [Date] {
-        (0..<7).reversed().compactMap { Calendar.current.date(byAdding: .day, value: -$0, to: Date()) }
+        // 健哥11-21令8：最近日期在上面（原是旧→新，排序反了）
+        (0..<7).compactMap { Calendar.current.date(byAdding: .day, value: -$0, to: Date()) }
     }
 
     private func markSlot(_ slot: Int) {
@@ -107,25 +153,31 @@ struct MedTodayView: View {
         cancelMedReminder()
     }
 
-    // P3 最小提醒实现：每天 9:00 本地通知（计划激活时注册/停用时取消）
+    // 健哥11-21令8：多闹钟版（按 reminderTimes 逐个注册每天响；最多3个）
     func scheduleMedReminder() {
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "UricNote"
-            content.body = "今天的药吃了吗？吃完来打个卡。"
-            content.sound = .default
-            var comps = DateComponents()
-            comps.hour = 9; comps.minute = 0
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-            let req = UNNotificationRequest(identifier: "ur.med.daily", content: content, trigger: trigger)
-            center.add(req)
+            // 清旧的（含单闹钟时代 id）再注册
+            center.removePendingNotificationRequests(withIdentifiers: (0..<3).map { "ur.med.daily.\($0)" } + ["ur.med.daily"])
+            let times = activePlan?.reminderTimes ?? []
+            for (idx, t) in times.prefix(3).enumerated() {
+                let content = UNMutableNotificationContent()
+                content.title = "UricNote"
+                let tf = DateFormatter(); tf.timeStyle = .short
+                content.body = "\(activePlan?.name ?? "药") \(activePlan?.dose ?? "")——到点了，吃完来打个卡。（\(tf.string(from: t))）"
+                content.sound = .default
+                var comps = DateComponents()
+                comps.hour = Calendar.current.component(.hour, from: t)
+                comps.minute = Calendar.current.component(.minute, from: t)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                center.add(UNNotificationRequest(identifier: "ur.med.daily.\(idx)", content: content, trigger: trigger))
+            }
         }
     }
 
     func cancelMedReminder() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["ur.med.daily"])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: (0..<3).map { "ur.med.daily.\($0)" } + ["ur.med.daily"])
     }
 }
 

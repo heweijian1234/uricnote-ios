@@ -81,11 +81,8 @@ struct TrendView: View {
                 }
                 Section {
                     Button {
-                        if store.meta.proUnlocked {
-                            ClinicReportGenerator.generate(store: store)
-                        } else {
-                            UricCelebrate.show("门诊记录是 Pro 功能——一次买断，无订阅。")
-                        }
+                        // 健哥11-21令：门诊记录放开——前期免费获真实用户反馈（原Pro锁移除）
+                        ClinicReportGenerator.generate(store: store)
                     } label: {
                         HStack {
                             Image(systemName: "doc.text.viewfinder")
@@ -95,7 +92,7 @@ struct TrendView: View {
                                 Text("一页 A4：档案+趋势+发作史+用药+生活方式").font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: store.meta.proUnlocked ? "lock.open" : "lock")
+                            Image(systemName: "lock.open")
                         }
                     }
                 } footer: {

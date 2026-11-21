@@ -141,6 +141,32 @@ struct PurineItem: Identifiable, Codable {
     var uricPer100g: Double        // 每100g嘌呤mg
     var level: String              // red(>150) / yellow(50-150) / green(<50)
     var sourceTag: String          // "ACR 2020" / "卫健委2024"
+    var category: String? = nil    // 健哥11-21令：食物分类导航（Optional默认——旧数据零破坏；运行时推断补齐）
+
+    /// 分类推断（关键词映射——种子174条没写category，按名字推断；推断不出归"其他"）
+    var inferredCategory: String {
+        if let c = category, !c.isEmpty { return c }
+        let rules: [(String, String)] = [
+            ("酒", "酒类"), ("啤酒", "酒类"), ("白酒", "酒类"), ("黄酒", "酒类"), ("红酒", "酒类"),
+            ("茶", "茶叶"), ("咖啡", "咖啡"),
+            ("奶茶", "奶茶"),
+            ("汤", "汤类"),
+            ("面包", "面包"), ("蛋糕", "面包"), ("糕", "面包"),
+            ("坚果", "坚果"), ("核桃", "坚果"), ("花生", "坚果"), ("杏仁", "坚果"), ("瓜子", "坚果"), ("腰果", "坚果"), ("栗子", "坚果"),
+            ("可乐", "饮料"), ("汽水", "饮料"), ("果汁", "饮料"), ("含糖", "饮料"), ("饮料", "饮料"),
+            ("鱼", "海鲜"), ("虾", "海鲜"), ("蟹", "海鲜"), ("贝", "海鲜"), ("牡蛎", "海鲜"), ("蛤", "海鲜"), ("海参", "海鲜"), ("海带", "海鲜"), ("紫菜", "海鲜"), ("鱿鱼", "海鲜"), ("章鱼", "海鲜"),
+            ("肝", "肉类"), ("腰", "肉类"), ("脑", "肉类"), ("肉", "肉类"), ("牛", "肉类"), ("猪", "肉类"), ("羊", "肉类"), ("鸡", "肉类"), ("鸭", "肉类"), ("鹅", "肉类"), ("肠", "肉类"), ("火腿", "肉类"), ("培根", "肉类"), ("腊肉", "肉类"), ("香肠", "肉类"),
+            ("奶", "饮料"), ("酸奶", "饮料"), ("豆浆", "饮料"),
+            ("菜", "蔬菜"), ("芹", "蔬菜"), ("菠", "蔬菜"), ("笋", "蔬菜"), ("菇", "蔬菜"), ("菌", "蔬菜"), ("瓜", "蔬菜"), ("萝卜", "蔬菜"), ("番茄", "蔬菜"), ("白菜", "蔬菜"), ("豆芽", "蔬菜"),
+            ("豆", "蔬菜"), ("玉米", "蔬菜"), ("薯", "蔬菜"), ("山药", "蔬菜"), ("茄", "蔬菜"), ("椒", "蔬菜"), ("葱", "蔬菜"), ("蒜", "蔬菜"), ("西兰花", "蔬菜"), ("花椰菜", "蔬菜"),
+            ("苹果", "水果"), ("橙", "水果"), ("橘", "水果"), ("香蕉", "水果"), ("梨", "水果"), ("葡萄", "水果"), ("西瓜", "水果"), ("桃", "水果"), ("莓", "水果"), ("樱桃", "水果"), ("荔", "水果"), ("芒果", "水果"), ("菠萝", "水果"), ("柚", "水果"), ("猕猴桃", "水果"), ("榴莲", "水果"), ("山楂", "水果"), ("枣", "水果"), ("果", "水果"),
+            ("米", "面包"), ("面", "面包"), ("燕麦", "面包"), ("麦", "面包"),
+            ("蛋", "肉类"),
+            ("火锅", "饮食场景"), ("烧烤", "饮食场景"), ("自助", "饮食场景"), ("快餐", "饮食场景"), ("宴", "饮食场景"), ("聚餐", "饮食场景"),
+        ]
+        for (kw, cat) in rules where name.contains(kw) { return cat }
+        return "其他"
+    }
 }
 
 // 食物库本体（FoodItem/FoodLibrary/FoodSourceCatalog）已剥离至 Shared/FoodLibraryData.swift（v11.1 扩容）
@@ -210,6 +236,8 @@ struct AppMeta: Codable {
     var proUnlocked: Bool = false
     var seedVotesTotal: Int = 0
     var waterAutoFillActive: Bool = false   // A2：7天后问是否沿用上周平均；可随时关
+    var dailyFoods: [String] = []           // 健哥11-21令：自定义日常饮食表（从嘌呤库选加，日后可删）
+    var customScenes: [String] = []         // 健哥11-21令：自定义场景（今天吃的是一整场——用户自建，其他兜底）
     var waterAutoFillAsked: Bool = false    // 问过没有（只问一次）
 }
 
@@ -258,6 +286,9 @@ final class Store: ObservableObject {
         if let d = try? JSONEncoder().encode(review) { defaults.set(d, forKey: "ur.review") }
         if let d = try? JSONEncoder().encode(recall) { defaults.set(d, forKey: "ur.recall") }
         if let d = try? JSONEncoder().encode(meta) { defaults.set(d, forKey: "ur.meta") }
+        // 健哥11-21令：日常食物表+自定义场景（跟meta一起走meta key？不——独立key防单块坏连坐）
+        if let d = try? JSONEncoder().encode(meta.dailyFoods) { defaults.set(d, forKey: "ur.dailyFoods") }
+        if let d = try? JSONEncoder().encode(meta.customScenes) { defaults.set(d, forKey: "ur.customScenes") }
     }
 
     private func load() {
@@ -276,6 +307,9 @@ final class Store: ObservableObject {
         if let d = defaults.data(forKey: "ur.review"), let x = try? JSONDecoder().decode(ReviewSchedule.self, from: d) { review = x }
         if let d = defaults.data(forKey: "ur.recall"), let x = try? JSONDecoder().decode(RecallAlarm.self, from: d) { recall = x }
         if let d = defaults.data(forKey: "ur.meta"), let x = try? JSONDecoder().decode(AppMeta.self, from: d) { meta = x }
+        // 健哥11-21令：日常食物表+自定义场景独立key读取（旧数据缺key=空表，零破坏）
+        if let d = defaults.data(forKey: "ur.dailyFoods"), let x = try? JSONDecoder().decode([String].self, from: d) { meta.dailyFoods = x }
+        if let d = defaults.data(forKey: "ur.customScenes"), let x = try? JSONDecoder().decode([String].self, from: d) { meta.customScenes = x }
     }
 
     // ---- v10→v11 迁移：旧 waterLogs（按日杯数）→ 新 waterDays（杯明细） ----

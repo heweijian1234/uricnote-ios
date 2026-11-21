@@ -23,7 +23,6 @@ struct DashboardView: View {
                     dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷
                     greenZoneCard    // 中低嘌呤清单查阅卡（v11.1 #2 改名）
                     quickActions     // 事件型（发作/化验/体重）
-                    recallAlarmCard  // 回忆闹钟设置卡（B6）
                 }
                 .padding()
             }
@@ -94,7 +93,7 @@ struct DashboardView: View {
         HStack(spacing: 12) {
             bigNum(value: store.flareFreeDays.map { "\($0)" } ?? "—", label: "无痛天数", footnote: store.flareFreeDays == nil ? "记录第一次发作后开始计数" : flareFootnote)
             NavigationLink { UricReadingPage() } label: {
-                bigNum(value: deltaText, label: "距目标", footnote: deltaFootnote).contentShape(Rectangle())
+                bigNum(value: deltaText, label: "上次尿酸值", footnote: deltaFootnote).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             NavigationLink { UricReadingPage() } label: {
@@ -161,27 +160,17 @@ struct DashboardView: View {
     // 今日待办行（B1 驾驶舱核心：该记没记的显示，记完打勾消失）
     private var todayTodos: some View {
         VStack(spacing: 8) {
+            // 健哥11-21令：每晚回顾提醒上移到"昨晚几点睡的？"上方
+            recallAlarmCardInline
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
                 todoRow(icon: "moon.fill", color: .brand, title: "昨晚几点睡的？") {
                     SleepQuickPicker()
                 }
             }
-            // ② 喝水（A2：点一次记一杯，显示今日合计）
-            if let w = store.todayWater, w.provenance != .estimated, w.totalMl == 0 {
-                todoRow(icon: "drop.fill", color: .water, title: "今天还没记水") {
-                    WaterPage()
-                }
-            }
-            // ③ 吃药打卡（v11.1 #5：一天 N 次出 N 次待办行）
+            // ② 吃药打卡（v11.1 #5：一天 N 次出 N 次待办行）
             ForEach(store.todayMedTodos.filter { !$0.done }, id: \.slot) { t in
                 medTodoRow(plan: t.plan, slot: t.slot)
-            }
-            // ④ 高嘌呤负面记录（B3：没碰也要记，防诱因排行虚高）
-            if store.todayFood == nil {
-                todoRow(icon: "fork.knife", color: .warn, title: "今天碰高嘌呤了吗？没碰也记一下") {
-                    FoodPage()
-                }
             }
             // 全部完成态（情绪出口：一天照顾好自己的可视化）
             if allDone {
@@ -349,11 +338,7 @@ struct DashboardView: View {
                     .cornerRadius(14)
             }
             HStack(spacing: 10) {
-                NavigationLink("记化验值") { UricReadingPage() }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.cardBG)
-                    .cornerRadius(12)
+                // 健哥11-21令：记化验值取消（走三数字区入口）——记体重保留
                 NavigationLink("记体重") { WeightEditor() }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -363,8 +348,8 @@ struct DashboardView: View {
         }
     }
 
-    // B6/C10：回忆闹钟卡（开关+时间可调）
-    private var recallAlarmCard: some View {
+    // B6/C10：回忆闹钟卡（开关+时间可调；健哥11-21令：上移到待办区顶部）
+    private var recallAlarmCardInline: some View {
         NavigationLink { RecallAlarmEditor() } label: {
             HStack {
                 Image(systemName: "alarm").foregroundColor(.brand)
@@ -608,9 +593,8 @@ struct HealthProfileEditor: View {
     @Environment(\.dismiss) var dismiss
     @State private var customCondition = ""
 
-    private let conditionOptions = ["高血压", "糖尿病", "高血脂", "肾结石"]
+    private let conditionOptions = ["高血压", "糖尿病", "高血脂", "肾结石", "脂肪肝"]   // 健哥11-21令+脂肪肝
     private let familyOptions = ["有", "无", "不确定"]
-    private let hlaOptions = ["查过-阴性", "查过-阳性", "没查过"]
 
     var body: some View {
         Form {
@@ -670,10 +654,27 @@ struct HealthProfileEditor: View {
                         if !v.isEmpty && !store.profile.conditions.contains(v) {
                             store.profile.conditions.removeAll { $0 == "不清楚" }
                             store.profile.conditions.append(v)
+                            store.save()   // 健哥11-21令修复：struct内层改动不触发didSet——显式落盘（点了添加无展现根因）
+                            UricCelebrate.show("已添加：\(v)")
                         }
                         customCondition = ""
                     }
                     .disabled(customCondition.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                // 健哥11-21令：已添加的自定义疾病可见可删（无展现问题连根修）
+                ForEach(store.profile.conditions.filter { !conditionOptions.contains($0) && $0 != "不清楚" }, id: \.self) { c in
+                    HStack {
+                        Label(c, systemImage: "stethoscope")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Button {
+                            store.profile.conditions.removeAll { $0 == c }
+                            store.save()
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                    }
                 }
             }
             Section("过敏史") {
@@ -684,13 +685,10 @@ struct HealthProfileEditor: View {
                 Picker("直系亲属有痛风吗", selection: Binding(get: { store.profile.familyGout ?? "不确定" }, set: { store.profile.familyGout = $0 })) {
                     ForEach(familyOptions, id: \.self) { Text($0).tag($0) }
                 }
-                Picker("HLA-B*5801 检测（别嘌醇基因筛查）", selection: Binding(get: { store.profile.hlaTested ?? "没查过" }, set: { store.profile.hlaTested = $0 })) {
-                    ForEach(hlaOptions, id: \.self) { Text($0).tag($0) }
-                }
             } header: {
-                Text("家族史与基因")
+                Text("家族史")
             } footer: {
-                Text("汉族人群 HLA-B*5801 携带率较高——别嘌醇超敏反应风险相关，指南建议用药前筛查。以上信息只进你的档案和门诊记录，App 不做任何诊断。")
+                Text("以上信息只进你的档案和门诊记录，App 不做任何诊断。")
             }
             Button("保存档案") {
                 store.profile.isComplete = true

@@ -388,6 +388,7 @@ struct UricReadingEditor: View {
     var editing: UricReading? = nil
 
     @State private var valueText = ""
+    @State private var weightText = ""       // 健哥11-21令：数值与肌酐中间的体重行（顺手记，进weightLogs）
     @State private var creatinineText = ""   // C12：可选
     @State private var source = "lab"
 
@@ -397,6 +398,10 @@ struct UricReadingEditor: View {
                 HStack {
                     TextField("数值", text: $valueText).keyboardType(.decimalPad)
                     Text(store.meta.unitIsUmol ? "µmol/L" : "mg/dL").foregroundColor(.secondary)
+                }
+                HStack {
+                    TextField("体重（可选）", text: $weightText).keyboardType(.decimalPad)
+                    Text("kg").foregroundColor(.secondary)
                 }
                 HStack {
                     TextField("肌酐（可选）", text: $creatinineText).keyboardType(.decimalPad)
@@ -425,6 +430,7 @@ struct UricReadingEditor: View {
     private func load(_ e: UricReading) {
         valueText = store.meta.unitIsUmol ? String(format: "%.0f", e.urateUnit) : String(format: "%.1f", e.valueMgDl)
         creatinineText = e.creatinineMgDl.map { String(format: "%.1f", $0) } ?? ""
+        weightText = store.weightLogs.last.map { String(format: "%.1f", $0.kg) } ?? ""
         source = e.source
     }
 
@@ -432,6 +438,10 @@ struct UricReadingEditor: View {
         guard let v = Double(valueText), v > 0 else { return }
         let mgDl = store.meta.unitIsUmol ? v / 59.48 : v
         let cr = Double(creatinineText)
+        // 健哥11-21令：体重行联动（填了顺手进weightLogs，趋势页体重线直接受益）
+        if let w = Double(weightText), w > 0 {
+            store.weightLogs.append(WeightLog(date: Date(), kg: w))
+        }
         if var e = editing, let idx = store.readings.firstIndex(where: { $0.id == e.id }) {
             e.valueMgDl = mgDl; e.creatinineMgDl = cr; e.source = source
             store.readings[idx] = e
@@ -458,6 +468,15 @@ struct WaterPage: View {
 
     var body: some View {
         List {
+            // 健哥11-21令：沿用上周平均上移第一排（标题下方）
+            Section {
+                Toggle("沿用上周平均（不想每天记时用）", isOn: Binding(
+                    get: { store.meta.waterAutoFillActive },
+                    set: { on in on ? store.enableWaterAutoFill() : store.disableWaterAutoFill() }
+                ))
+            } footer: {
+                Text("开启后，没手记的日子自动按最近 7 天平均填，报告标「沿用」不算打卡。随时可关，关掉后恢复手记。")
+            }
             Section("今天") {
                 if let w = store.todayWater {
                     if w.provenance == .estimated {
@@ -526,16 +545,6 @@ struct WaterPage: View {
                 Text("尿色自评（脱水信号，早午晚）")
             } footer: {
                 Text("没记的时段就空着——不猜。")
-            }
-            Section {
-                Toggle("沿用上周平均（不想每天记时用）", isOn: Binding(
-                    get: { store.meta.waterAutoFillActive },
-                    set: { on in on ? store.enableWaterAutoFill() : store.disableWaterAutoFill() }
-                ))
-            } header: {
-                Text("设置")
-            } footer: {
-                Text("开启后，没手记的日子自动按最近 7 天平均填，报告标「沿用」不算打卡。随时可关，关掉后恢复手记。")
             }
         }
         .navigationTitle("饮水与尿色")
@@ -622,6 +631,8 @@ struct WaterPage: View {
 struct FoodPage: View {
     @ObservedObject var store = Store.shared
     @State private var custom = ""
+    @State private var showDailyFoodPicker = false   // 健哥11-21令：添加日常食物（进库选择）
+    @State private var showSceneEditor = false       // 健哥11-21令：自定义场景管理
 
     var body: some View {
         List {
@@ -635,62 +646,98 @@ struct FoodPage: View {
                     }
                 }
             }
+            // 健哥11-21令5：做大做显眼+字居中
             Section {
                 Button {
                     markNoTrigger()
                 } label: {
-                    Label("今天没吃高嘌呤，记一笔 ✓", systemImage: "checkmark.circle")
-                        .foregroundColor(.success)
+                    VStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 34))
+                        Text("今天没吃高嘌呤")
+                            .font(.title3.bold())
+                        Text("记一笔 ✓")
+                            .font(.callout)
+                    }
+                    .foregroundColor(.success)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
                 }
             } header: {
                 Text("今天没碰高嘌呤？（负面记录很重要）")
             } footer: {
                 Text("只记「吃了」会让排行虚高——没吃的日子也是数据。")
             }
-            // v11.1 Daylio 式 chip 网格：点选高亮，零键盘
+            // 健哥11-21令6：自定义日常饮食表（用户自己建的——看到的都是平常真吃的）
             Section {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                    ForEach(FoodLibrary.redZone) { item in
-                        FoodChip(
-                            name: item.name,
-                            selected: store.todayFood?.items.contains(item.name) == true,
-                            tint: .danger
-                        ) { toggle(item.name) }
+                if store.meta.dailyFoods.isEmpty {
+                    Text("还没建立你的日常饮食表")
+                        .font(.callout).foregroundColor(.secondary)
+                } else {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                        ForEach(store.meta.dailyFoods, id: \.self) { name in
+                            FoodChip(
+                                name: name,
+                                selected: store.todayFood?.items.contains(name) == true,
+                                tint: .danger
+                            ) { toggle(name) }
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
+                // 健哥11-21令5：添加日常食物入口（下方）
+                Button {
+                    showDailyFoodPicker = true
+                } label: {
+                    Label("添加日常食物", systemImage: "plus.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             } header: {
-                Text("碰到的高嘌呤（多选，不分早午晚）")
+                Text("我的日常饮食表（点选今天碰过的）")
             } footer: {
-                Text("红肉已移到「适量注意」——碰了就记，请勿大量。")
+                Text("每个人的饮食差别很大——从嘌呤食物库选择你平常吃到的，建成自己的表；日后可左滑删除。")
             }
+            // 健哥11-21令7：场景自定义（用户自建+其他兜底）
             Section {
-                ForEach(FoodLibrary.scenes, id: \.name) { s in
+                ForEach(store.meta.customScenes, id: \.self) { name in
                     Button {
-                        addScene(s.name, auto: s.autoItems)
+                        addScene(name, auto: FoodLibrary.scenes.first(where: { $0.name == name })?.autoItems ?? [])
                     } label: {
                         HStack {
-                            Text(s.name).foregroundColor(.primary)
+                            Text(name).foregroundColor(.primary)
                             Spacer()
-                            if store.todayFood?.scenes.contains(s.name) == true {
+                            if store.todayFood?.scenes.contains(name) == true {
                                 Image(systemName: "checkmark.circle.fill").foregroundColor(.danger)
                             }
                         }
                     }
                 }
-            } header: {
-                Text("今天吃的是一整场？（场景一键）")
-            } footer: {
-                Text("火锅/烧烤/快餐点了自动带上关联红区项（汤底/红肉/啤酒/可乐）。")
-            }
-            Section("其他（自定义）") {
+                .onDelete { store.meta.customScenes.remove(atOffsets: $0) }
+                // 其他（自定义）兜底
                 HStack {
-                    TextField("比如：小龙虾", text: $custom)
+                    TextField("其他（自定义场景/食物）", text: $custom)
                     Button("记") { if !custom.isEmpty { Haptic.tap(); toggle(custom); custom = "" } }
                 }
+                Button {
+                    showSceneEditor = true
+                } label: {
+                    Label("管理场景（从食物库选择）", systemImage: "square.grid.2x2")
+                        .font(.callout)
+                }
+            } header: {
+                Text("今天吃的是一整场？")
+            } footer: {
+                Text("场景从嘌呤食物库选择建立，贴合你自己的生活方式。")
             }
         }
         .navigationTitle("饮食")
+        .sheet(isPresented: $showDailyFoodPicker) {
+            DailyFoodPickerSheet()
+        }
+        .sheet(isPresented: $showSceneEditor) {
+            ScenePickerSheet()
+        }
     }
 
     private func ensureToday() -> Int {
@@ -846,5 +893,112 @@ struct WeightEditor: View {
         }
         .navigationTitle(editing == nil ? "体重" : "改体重")
         .onAppear { if let e = editing { kgText = String(format: "%.1f", e.kg) } }
+    }
+}
+
+
+// MARK: - 日常食物选择器（健哥11-21令5/6：从嘌呤库选加到"我的日常饮食表"）
+// 统一从食物库选择——避免每人用词不一（啤酒≠啤洒≠beer 是三个不同条目）
+
+struct DailyFoodPickerSheet: View {
+    @ObservedObject var store = Store.shared
+    @Environment(\.dismiss) var dismiss
+    @State private var query = ""
+
+    /// 全库候选（红+黄+绿全开——日常表不只记坏的，好的也记）
+    private var candidates: [FoodItem] {
+        let all = FoodLibrary.redZone + FoodLibrary.yellowZone + FoodLibrary.greenZone
+        guard !query.isEmpty else { return all }
+        return all.filter { $0.name.contains(query) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(candidates) { item in
+                        Button {
+                            if store.meta.dailyFoods.contains(item.name) {
+                                store.meta.dailyFoods.removeAll { $0 == item.name }
+                            } else {
+                                store.meta.dailyFoods.append(item.name)
+                            }
+                            store.save()
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name).foregroundColor(.primary)
+                                    Text(item.note).font(.caption2).foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Circle()
+                                    .fill(item.level == "red" ? Color.danger : item.level == "yellow" ? Color.warn : Color.success)
+                                    .frame(width: 10, height: 10)
+                                if store.meta.dailyFoods.contains(item.name) {
+                                    Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("从嘌呤食物库选择（加入后出现在饮食页）")
+                } footer: {
+                    Text("选你平常真吃到的——红点=高嘌呤注意，黄=适量，绿=推荐。选错了回饮食页左滑删。")
+                }
+            }
+            .searchable(text: $query, prompt: "搜食物")
+            .navigationTitle("添加日常食物")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 场景选择器（健哥11-21令7：场景自建——本次用内置四场景起步，食物库改版后接入全量）
+
+struct ScenePickerSheet: View {
+    @ObservedObject var store = Store.shared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(FoodLibrary.scenes, id: \.name) { s in
+                        Button {
+                            if store.meta.customScenes.contains(s.name) {
+                                store.meta.customScenes.removeAll { $0 == s.name }
+                            } else {
+                                store.meta.customScenes.append(s.name)
+                            }
+                            store.save()
+                        } label: {
+                            HStack {
+                                Text(s.name).foregroundColor(.primary)
+                                Spacer()
+                                if store.meta.customScenes.contains(s.name) {
+                                    Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("选择你的场景（今天吃的是一整场）")
+                } footer: {
+                    Text("食物库改版后会加入更多场景可选。没覆盖的用「其他（自定义）」兜底。")
+                }
+            }
+            .navigationTitle("管理场景")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
     }
 }

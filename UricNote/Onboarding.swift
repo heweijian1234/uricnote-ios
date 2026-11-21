@@ -221,6 +221,8 @@ struct OnboardingView: View {
     }
 
     private func finish() {
+        // 健哥11-21令：跳过也保存已填的身高体重年龄（防"填了却没带到档案"二次填写）
+        saveProfileIfFilled()
         // 跳过也记录动机（若有）
         if let m = motivation { store.meta.motivation = m }
         if motivation == .other && !otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty {

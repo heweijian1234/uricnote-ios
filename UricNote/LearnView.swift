@@ -21,6 +21,21 @@ struct LearnView: View {
                     }
                 }
 
+                // 健哥11-21令：高尿酸危害介绍
+                Section {
+                    NavigationLink {
+                        HarmIntroView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.warn)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("高尿酸的危害").font(.body.weight(.medium))
+                                Text("不只是痛风——了解它对身体的影响").font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 Section("先破除几个误区") {
                     NavigationLink("8 个最常见的误区") { MythListView() }
                     NavigationLink("嘌呤食物库") { PurineListView() }
@@ -56,8 +71,11 @@ struct LearnView: View {
                     }
                     .foregroundColor(.warn)
                     Button("给我们评分") {
-                        // 只在用户主动点击时触发（iOS 365 天 3 次限制——不自动弹）
+                        // 健哥11-21令修：评分弹窗有365天3次配额，满了就静默——加跳App Store评论页兜底（永远有效）
                         FeedbackHelper.requestReview()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            FeedbackHelper.openStoreReviewPage()
+                        }
                     }
                     .foregroundColor(.brand)
                 }
@@ -75,33 +93,34 @@ struct VisionPageView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("这不是一个记录工具。")
+                Text("这不只是一份记录。")
                     .font(.title.bold())
-                Text("这是一条从「被疼痛打醒」走到「痛风不再占据你的脑子」的路。")
+                Text("这是一次尊重身体，自我救赎的蜕变举动。愿你能更幸福的去体验生活。")
                     .font(.body)
                     .foregroundColor(.secondary)
 
                 Divider()
 
-                Text("我们相信什么").font(.headline)
-                Text("尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好。").font(.callout)
+                Text("我们相信").font(.headline)
+                Text("只需要养成习惯。").font(.callout)
 
                 Text("现在就能用").font(.headline)
-                visionRow("bolt", "3 秒记一次发作，半夜痛醒也能记")
-                visionRow("fork.knife", "食物嘌呤一查就知道，带临床指南背书")
-                visionRow("pills", "吃药喝水，一屏搞定")
-                visionRow("doc.text", "一页报告带给医生——他只有 15 分钟，这一页足够")
+                visionRow("fork.knife", "食物嘌呤清单，区分建议食用、不建议食用，带临床指南背书")
+                visionRow("brain", "每天回忆记录，辅助医生寻找你疼痛的嘌呤因子")
+                visionRow("pills", "提醒吃药，记录喝水量习惯")
+                visionRow("doc.text", "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议")
 
                 Text("会随时间长大").font(.headline)
-                visionRow("chart.line.uptrend.xyaxis", "7 天后，看到你的趋势线")
-                visionRow("sparkles", "1 个月后，告诉你发作前共同吃了什么")
-                visionRow("rosette", "90 天无痛 + 尿酸达标，点亮「已控制」")
-                visionRow("figure.walk", "更远处：它是你身边那个记性很好的病友")
+                visionRow("chart.line.uptrend.xyaxis", "会随时间记录，画出你的蜕变之路")
+                visionRow("calendar", "7 天后，看到你的习惯趋势线")
+                visionRow("sparkles", "一个月后，发现疼痛前共同吃了什么")
+                visionRow("figure.walk", "更远处：我是一直陪你走过来的病友")
 
-                Text("选择它的理由").font(.headline)
-                visionRow("checkmark.seal", "免费记录，一次买断解锁全部——无订阅、无广告")
+                Text("选择我的理由").font(.headline)
+                visionRow("person.crop.circle.badge.checkmark", "开发者本人就是高尿酸痛风患者，正在改善的路上，此 App 是自用也是想帮助更多患友")
+                visionRow("checkmark.seal", "免费使用，持续更新，日后不排除买断制与订阅制，但与你无关——开发初期，下载的患友都是终身免费使用")
                 visionRow("stethoscope", "设计依据是公开的临床试验节律，不是营销噱头")
-                visionRow("person.crop.circle.badge.checkmark", "开发者本人就是高尿酸患者——每条反馈都会被认真读")
+                visionRow("wand.and.stars", "设计细节会加入开发者的个人心得")
 
                 Text("本 App 是记录工具，不提供诊断或治疗建议。\n数据来源：ACR 2020 指南 / G-CAN 2024 缓解标准 / 公开临床试验。")
                     .font(.caption2)
@@ -205,6 +224,9 @@ struct PurineListView: View {
     @State private var query = ""
     // 🔴健哥令 2026-11-15：默认先看"能吃什么"（绿灯优先）——患者打开 food 库全是禁忌会心情糟糕/抗拒（v8 情绪设计：先给希望再给边界）
     @State private var tab = 0   // 0=绿灯能吃 1=黄灯适量 2=红灯注意
+    // 健哥11-21令：分类导航（全部/蔬菜/水果/肉类/酒类/海鲜/咖啡/坚果/面包/汤类/饮料/奶茶/茶叶/饮食场景）
+    @State private var category = "全部"
+    static let categories = ["全部", "蔬菜", "水果", "肉类", "酒类", "海鲜", "咖啡", "坚果", "面包", "汤类", "饮料", "奶茶", "茶叶", "饮食场景", "其他"]
 
     var body: some View {
         List {
@@ -215,6 +237,27 @@ struct PurineListView: View {
             }
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
+            // 健哥11-21令：分类导航条（横向滚动 chip）
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Self.categories, id: \.self) { c in
+                        Button {
+                            category = c
+                        } label: {
+                            Text(c)
+                                .font(.caption.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(category == c ? Color.brand : Color.gray.opacity(0.12))
+                                .foregroundColor(category == c ? .white : .primary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
             let items = filtered.sorted { $0.name < $1.name }
             if items.isEmpty {
@@ -254,7 +297,9 @@ struct PurineListView: View {
         let byQuery = store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
         // 按选中的Tab过滤：绿灯/黄灯/红灯
         let levelKey = ["green", "yellow", "red"][tab]
-        return byQuery.filter { $0.level == levelKey }
+        // 健哥11-21令：分类过滤（"全部"不过滤；推断不出归"其他"）
+        let byCategory = category == "全部" ? byQuery : byQuery.filter { $0.inferredCategory == category }
+        return byCategory.filter { $0.level == levelKey }
     }
 
     private func circle(for level: String) -> some View {
@@ -502,8 +547,68 @@ enum FeedbackHelper {
         }
     }
 
+    // 健哥11-21令：跳 App Store 评论页兜底（评分弹窗配额满时永远有效）
+    static func openStoreReviewPage() {
+        // UricNote App ID 6834462104（未上架前此链接无效——上架后生效）
+        if let url = URL(string: "https://apps.apple.com/app/id6834462104?action=write-review") {
+            UIApplication.shared.open(url)
+        }
+    }
+
     static func requestReview() {
         guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
         SKStoreReviewController.requestReview(in: scene)
+    }
+}
+
+
+// MARK: - 高尿酸危害介绍（健哥11-21令：了解页新增——不只是痛风）
+
+struct HarmIntroView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("高尿酸，不只是痛风。")
+                    .font(.title2.bold())
+                Text("尿酸高在关节形成结晶时是痛风；但它的影响不止关节——长期高尿酸会悄悄波及多个器官。")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+
+                Divider()
+
+                harmRow("person.fill", "肾脏",
+                        "尿酸盐可沉积在肾间质和尿路——高尿酸人群慢性肾病风险显著升高；尿酸性肾结石也常见。")
+                harmRow("heart.fill", "心血管",
+                        "流行病学研究提示高尿酸与高血压、动脉硬化相关——它是代谢异常的信号灯之一。")
+                harmRow("square.stack.3d.up.fill", "代谢整体",
+                        "高尿酸常与肥胖、高血脂、脂肪肝、高血糖结伴出现——代谢综合征的成员之一。")
+                harmRow("brain.head.profile", "关联疾病",
+                        "观察性研究报道高尿酸与糖尿病、非酒精性脂肪肝等存在关联——机制复杂，管理尿酸是整体代谢管理的一环。")
+
+                Divider()
+
+                Text("好消息").font(.headline)
+                Text("达标管理（具体目标遵医嘱）后，结晶可以逐渐溶解，风险随之回落——这正是每天记录的意义：让趋势可见，让调整有据。")
+                    .font(.callout)
+
+                Text("以上为公开研究共识的科普整理，不构成诊断或治疗建议。数据来源：ACR 2020 指南 / 公开流行病学研究。")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+        }
+        .navigationTitle("高尿酸的危害")
+    }
+
+    private func harmRow(_ icon: String, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.warn)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.semibold))
+                Text(text).font(.callout).foregroundColor(.secondary)
+            }
+        }
     }
 }

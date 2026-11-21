@@ -61,7 +61,7 @@ struct FeedbackPage: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal)
 
-                Text("你的反馈直接决定这个 App 往哪走——开发者本人就是高尿酸患者。")
+                Text("你的反馈直接决定这个 App 往哪走。")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
