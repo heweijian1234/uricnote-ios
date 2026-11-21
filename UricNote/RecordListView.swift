@@ -928,7 +928,9 @@ struct DailyFoodPickerSheet: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.name).foregroundColor(.primary)
-                                    Text(item.note).font(.caption2).foregroundColor(.secondary)
+                                    if let note = item.note {
+                                        Text(note).font(.caption2).foregroundColor(.secondary)
+                                    }
                                 }
                                 Spacer()
                                 Circle()
