@@ -40,7 +40,7 @@ struct OnboardingView: View {
                 Button(L("Skip", "跳过")) { finish() }
                     .foregroundColor(.secondary)
                 Button(action: { next() }) {
-                    Text(step == 2 ? L("Get Started", "开始使用")) : (step == 1 ? L("Save & continue", "保存并继续") : L("Next", "下一步")))
+                    Text(step == 2 ? L("Get Started", "开始使用") : (step == 1 ? L("Save & continue", "保存并继续") : L("Next", "下一步")))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                         .background(step == 0 && (motivation == nil || (motivation == .other && otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty)) ? Color.gray.opacity(0.3) : Color.brand)

@@ -41,7 +41,7 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 Image(systemName: "quote.opening")
                     .foregroundColor(.brand)
-                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己")) : L("Your reason for managing uric acid: \(m.rawValue)", "你管理尿酸，最重要的原因是：\(m.rawValue)"))
+                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己") : L("Your reason for managing uric acid: \(m.rawValue)", "你管理尿酸，最重要的原因是：\(m.rawValue)"))
                     .font(.callout.weight(.medium))
                     .foregroundColor(.secondary)
             }
@@ -164,7 +164,7 @@ struct DashboardView: View {
             recallAlarmCardInline
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
-                todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？")) {
+                todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？") {
                     SleepQuickPicker()
                 }
             }
@@ -242,7 +242,7 @@ struct DashboardView: View {
     private var foodShortcutText: String {
         guard let f = store.todayFood else { return L("not logged", "未记") }
         if f.noTriggerToday { return L("none ✓", "没碰 ✓") }
-        return f.items.isEmpty && f.scenes.isEmpty ? L("Not logged", "未记")) : L("Logged ✓", "已记 ✓")
+        return f.items.isEmpty && f.scenes.isEmpty ? L("Not logged", "未记") : L("Logged ✓", "已记 ✓")
     }
     private var medShortcutText: String {
         let todos = store.todayMedTodos

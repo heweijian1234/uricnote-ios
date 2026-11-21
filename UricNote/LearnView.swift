@@ -262,7 +262,7 @@ struct PurineListView: View {
 
             let items = filtered.sorted { $0.name < $1.name }
             if items.isEmpty {
-                Text(tab == 0 ? L("No low-purine matches for this search — try another word, or check 'Caution' (it may truly need limiting).", "这个搜索词下没有低嘌呤推荐——换个词试试，或看看「注意」页（可能它确实要少吃）。")) : L("No records for this search.", "这个搜索词下没有记录。"))
+                Text(tab == 0 ? L("No low-purine matches for this search — try another word, or check 'Caution' (it may truly need limiting).", "这个搜索词下没有低嘌呤推荐——换个词试试，或看看「注意」页（可能它确实要少吃）。") : L("No records for this search.", "这个搜索词下没有记录。"))
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)

@@ -219,7 +219,7 @@ struct FlareEditorView: View {
                 Text(L("Optional: after the flare ends", "可选：发作结束后补"))
             }
             Section {
-                Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
+                Button(editing == nil ? L("Save", "保存") : L("Save changes", "保存修改")) {
                     save()
                 }
                 .frame(maxWidth: .infinity)
@@ -305,7 +305,7 @@ struct UricReadingPage: View {
                                      : String(format: "%.1f mg/dL", r.valueMgDl))
                                     .font(.body.weight(.semibold))
                                 Spacer()
-                                Text(r.atTarget ? L("At target ✓", "达标 ✓")) : L("Above target", "未达标"))
+                                Text(r.atTarget ? L("At target ✓", "达标 ✓") : L("Above target", "未达标"))
                                     .font(.caption)
                                     .foregroundColor(r.atTarget ? .green : .amber)
                             }
@@ -413,11 +413,11 @@ struct UricReadingEditor: View {
                 }
                 .pickerStyle(.segmented)
             } header: {
-                Text(editing == nil ? L("Most recent uric acid", "最近一次尿酸值")) : L("Edit lab value", "修改化验值"))
+                Text(editing == nil ? L("Most recent uric acid", "最近一次尿酸值") : L("Edit lab value", "修改化验值"))
             } footer: {
                 Text(L("Creatinine guides urate-lowering drug choice — fill it in if it's on your lab report. Next recheck is auto-scheduled (default 8 weeks, adjustable).", "肌酐是降酸药选择依据（苯溴马隆肾功能禁忌/别嘌醇按肾功能调量）——报告单上有就顺手填。录完自动排复查日（默认 8 周，可调）。"))
             }
-            Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
+            Button(editing == nil ? L("Save", "保存") : L("Save changes", "保存修改")) {
                 save()
             }
             .frame(maxWidth: .infinity)
@@ -874,7 +874,7 @@ struct WeightEditor: View {
                     TextField(L("e.g. 88.5", "例如 88.5"), text: $kgText).keyboardType(.decimalPad)
                     Text("kg").foregroundColor(.secondary)
                 }
-                Button(editing == nil ? L("Save", "保存")) : L("Save changes", "保存修改")) {
+                Button(editing == nil ? L("Save", "保存") : L("Save changes", "保存修改")) {
                     if let v = Double(kgText), v > 0 {
                         if var e = editing, let idx = store.weightLogs.firstIndex(where: { $0.id == e.id }) {
                             e.kg = v
@@ -890,12 +890,12 @@ struct WeightEditor: View {
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             } header: {
-                Text(editing == nil ? L("Weight this time (kg)", "这次体重（kg）")) : L("Edit weight", "改体重"))
+                Text(editing == nil ? L("Weight this time (kg)", "这次体重（kg）") : L("Edit weight", "改体重"))
             } footer: {
                 Text(L("Weight loss is the most effective lifestyle change for uric acid (about 1 point lower per 5kg lost). Once a week is enough.", "减重是降尿酸最有效的生活方式干预（每减 5kg，尿酸平均降约 1）。每周一次就够。"))
             }
         }
-        .navigationTitle(editing == nil ? L("Weight", "体重")) : L("Edit weight", "改体重"))
+        .navigationTitle(editing == nil ? L("Weight", "体重") : L("Edit weight", "改体重"))
         .onAppear { if let e = editing { kgText = String(format: "%.1f", e.kg) } }
     }
 }
@@ -1053,6 +1053,6 @@ struct ScenePickerSheet: View {
     }
 
     private func levelName(_ l: String) -> String {
-        l == "red" ? "Caution" : l == "yellow" ? L("Moderate", "适量")) : L("Safe to eat", "能吃")
+        l == "red" ? "Caution" : l == "yellow" ? L("Moderate", "适量") : L("Safe to eat", "能吃")
     }
 }
