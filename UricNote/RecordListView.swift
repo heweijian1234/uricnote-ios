@@ -1057,6 +1057,6 @@ struct ScenePickerSheet: View {
     }
 
     private func levelName(_ l: String) -> String {
-        l == "red" ? "Caution" : l == "yellow" ? L("Moderate", "适量") : L("Safe to eat", "能吃")
+        l == "red" ? L("Caution", "注意") : l == "yellow" ? L("Moderate", "适量") : L("Safe to eat", "能吃")
     }
 }
