@@ -306,7 +306,8 @@ struct DashboardView: View {
 
     // C3/v11.1 #2：中低嘌呤清单查阅卡（去"今天能吃什么"限制性措辞——引导不限制）
     private var greenZoneCard: some View {
-        NavigationLink { FoodGuideView() } label: {
+        // 健哥11-22令2：中低嘌呤清单=与管理日常食物页一致（同源PurineDatabase+分类结构）
+        NavigationLink { PurineListView() } label: {
             HStack {
                 Image(systemName: "leaf.circle.fill").foregroundColor(.success)
                 VStack(alignment: .leading, spacing: 2) {

@@ -55,11 +55,9 @@ struct LearnView: View {
                         }
                     }
                     Button("给我们评分") {
-                        // 健哥11-21令修：评分弹窗有365天3次配额，满了就静默——加跳App Store评论页兜底（永远有效）
+                        // 健哥11-22令5自查修正：App 未上架——商店评论页是死链（404）。
+                        // 未上架期只走系统弹窗（不依赖商店页）；上架后恢复商店跳转兜底
                         FeedbackHelper.requestReview()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            FeedbackHelper.openStoreReviewPage()
-                        }
                     }
                     .foregroundColor(.brand)
                 }
@@ -247,6 +245,7 @@ struct PurineListView: View {
                                 .foregroundColor(category == c ? .white : .primary)
                                 .clipShape(Capsule())
                         }
+                        .buttonStyle(.borderless)   // 🔴健哥11-22实锤修复：List行内多Button无borderless=整行tap只给一个按钮
                     }
                 }
                 .padding(.vertical, 2)
@@ -361,8 +360,6 @@ enum PurineDatabase {
         .init(name: "基围虾", uricPer100g: 145, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "螃蟹", uricPer100g: 82, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "豆腐", uricPer100g: 55, level: "yellow", sourceTag: "ACR 2020"),
-        .init(name: "豆浆", uricPer100g: 28, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "扁豆（干）", uricPer100g: 75, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "四季豆", uricPer100g: 20, level: "green", sourceTag: "ACR 2020"),
         .init(name: "芦笋", uricPer100g: 23, level: "green", sourceTag: "ACR 2020"),
         .init(name: "菠菜", uricPer100g: 23, level: "green", sourceTag: "ACR 2020"),
@@ -388,7 +385,6 @@ enum PurineDatabase {
         .init(name: "可乐（含糖）", uricPer100g: 2, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "蜂蜜", uricPer100g: 5, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "花生", uricPer100g: 79, level: "yellow", sourceTag: "ACR 2020"),
-        .init(name: "豆腐（北）", uricPer100g: 68, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "豆干", uricPer100g: 75, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "扁豆", uricPer100g: 75, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "豌豆", uricPer100g: 76, level: "yellow", sourceTag: "ACR 2020"),
@@ -427,7 +423,6 @@ enum PurineDatabase {
         .init(name: "小米粥", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
         .init(name: "燕麦", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
         .init(name: "馒头", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "脱脂酸奶", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
         .init(name: "酸奶", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
         .init(name: "蛋白（蛋清）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "车厘子", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
@@ -449,22 +444,16 @@ enum PurineDatabase {
         .init(name: "全麦意面", uricPer100g: 14, level: "green", sourceTag: "ACR 2020"),
         .init(name: "白面包", uricPer100g: 10, level: "green", sourceTag: "ACR 2020"),
         .init(name: "贝果", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "玉米片（低糖）", uricPer100g: 8, level: "green", sourceTag: "ACR 2020"),
         .init(name: "藜麦", uricPer100g: 18, level: "green", sourceTag: "ACR 2020"),
         .init(name: "荞麦面", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
         .init(name: "年糕", uricPer100g: 9, level: "green", sourceTag: "ACR 2020"),
         .init(name: "黑麦面包（德式）", uricPer100g: 13, level: "green", sourceTag: "ACR 2020"),
         .init(name: "椒盐卷饼（德式）", uricPer100g: 11, level: "green", sourceTag: "ACR 2020"),
         .init(name: "酸菜（德式泡菜）", uricPer100g: 6, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "土豆泥（无奶油）", uricPer100g: 7, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "燕麦粥", uricPer100g: 11, level: "green", sourceTag: "ACR 2020"),
         .init(name: "英式早餐茶", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "约克郡布丁", uricPer100g: 12, level: "green", sourceTag: "ACR 2020"),
         .init(name: "鱼罐头（水浸）", uricPer100g: 145, level: "red", sourceTag: "ACR 2020"),
-        .init(name: "啤酒（普通）", uricPer100g: 30, level: "red", sourceTag: "ACR 2020"),
-        .init(name: "精酿啤酒/IPA", uricPer100g: 35, level: "red", sourceTag: "ACR 2020"),
         .init(name: "黑啤/世涛", uricPer100g: 36, level: "red", sourceTag: "ACR 2020"),
-        .init(name: "白酒（中国烈酒）", uricPer100g: 0, level: "red", sourceTag: "ACR 2020"),
         .init(name: "威士忌", uricPer100g: 0, level: "red", sourceTag: "ACR 2020"),
         .init(name: "伏特加", uricPer100g: 0, level: "red", sourceTag: "ACR 2020"),
         .init(name: "红酒", uricPer100g: 3, level: "yellow", sourceTag: "ACR 2020"),
@@ -473,7 +462,6 @@ enum PurineDatabase {
         .init(name: "气泡水", uricPer100g: 0, level: "green", sourceTag: "ACR 2020"),
         .init(name: "运动饮料（无糖）", uricPer100g: 1, level: "green", sourceTag: "ACR 2020"),
         .init(name: "椰子水", uricPer100g: 3, level: "green", sourceTag: "ACR 2020"),
-        .init(name: "番茄汁（低钠）", uricPer100g: 5, level: "green", sourceTag: "ACR 2020"),
         .init(name: "培根", uricPer100g: 110, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "香肠", uricPer100g: 125, level: "red", sourceTag: "ACR 2020"),
         .init(name: "热狗", uricPer100g: 128, level: "red", sourceTag: "ACR 2020"),
@@ -498,7 +486,6 @@ enum PurineDatabase {
         .init(name: "方便面（非肉汤）", uricPer100g: 25, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "火锅清汤底", uricPer100g: 60, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "麻辣火锅底", uricPer100g: 180, level: "red", sourceTag: "ACR 2020"),
-        .init(name: "牛肉面（牛肉少）", uricPer100g: 45, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "螺蛳粉（汤）", uricPer100g: 95, level: "yellow", sourceTag: "ACR 2020"),
         .init(name: "酸辣粉", uricPer100g: 20, level: "green", sourceTag: "ACR 2020"),
         .init(name: "凉皮", uricPer100g: 15, level: "green", sourceTag: "ACR 2020"),

@@ -231,5 +231,8 @@ struct OnboardingView: View {
         store.meta.onboardingDone = true
         store.meta.lastOpenedAt = Date()
         store.save()
+        // 🔴健哥11-22实测实锤"每次进都弹前三屏"——防御性双写：
+        // 独立key直写 UserDefaults（绕开 meta Codable 链路一切可能的解码失败回退）
+        UserDefaults.standard.set(true, forKey: "ur.onboarded.v2")
     }
 }

@@ -15,29 +15,41 @@ struct RootView: View {
     @StateObject private var store = Store.shared
     @State private var tab = 0
     @AppStorage("hasLaunchedOnce") private var hasLaunchedOnce = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        if !store.meta.onboardingDone {
-            OnboardingView()
-        } else {
-            TabView(selection: $tab) {
-                DashboardView()
-                    .tabItem { Label("仪表盘", systemImage: "speedometer") }
-                    .tag(0)
-                RecordListView()
-                    .tabItem { Label("记录", systemImage: "square.and.pencil") }
-                    .tag(1)
-                TrendView()
-                    .tabItem { Label("趋势", systemImage: "chart.xyaxis.line") }
-                    .tag(2)
-                LearnView()
-                    .tabItem { Label("了解", systemImage: "book") }
-                    .tag(3)
+        Group {
+            // 🔴健哥11-22实测实锤"每次进都弹前三屏"——双保险判断：
+            // meta.onboardingDone（Codable 链路）+ 独立 key 直写（绕开一切解码回退）
+            if !store.meta.onboardingDone && !UserDefaults.standard.bool(forKey: "ur.onboarded.v2") {
+                OnboardingView()
+            } else {
+                TabView(selection: $tab) {
+                    DashboardView()
+                        .tabItem { Label("仪表盘", systemImage: "speedometer") }
+                        .tag(0)
+                    RecordListView()
+                        .tabItem { Label("记录", systemImage: "square.and.pencil") }
+                        .tag(1)
+                    TrendView()
+                        .tabItem { Label("趋势", systemImage: "chart.xyaxis.line") }
+                        .tag(2)
+                    LearnView()
+                        .tabItem { Label("了解", systemImage: "book") }
+                        .tag(3)
+                }
+                .onAppear {
+                    if !hasLaunchedOnce { hasLaunchedOnce = true }
+                    store.meta.lastOpenedAt = Date()
+                    store.save()
+                    // 🔴第三重保险：进主界面即写独立 key（杀进程/解码回退都不影响）
+                    UserDefaults.standard.set(true, forKey: "ur.onboarded.v2")
+                }
             }
-            .onAppear {
-                if !hasLaunchedOnce { hasLaunchedOnce = true }
-                store.meta.lastOpenedAt = Date()
-                store.save()
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .background {
+                store.save()   // 进后台即全量落盘——杀进程不丢
             }
         }
     }

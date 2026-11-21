@@ -17,6 +17,9 @@ struct RecordListView: View {
                     NavigationLink { UricReadingPage() } label: {
                         Label("尿酸化验值", systemImage: "list.clipboard")
                     }
+                    NavigationLink { WeightPage() } label: {
+                        Label("体重", systemImage: "scalemass").foregroundColor(.success)
+                    }
                 }
                 Section("生活方式") {
                     NavigationLink { WaterPage() } label: {
@@ -27,9 +30,6 @@ struct RecordListView: View {
                     }
                     NavigationLink { SleepPage() } label: {
                         Label("入睡时间", systemImage: "moon.fill").foregroundColor(.brand)
-                    }
-                    NavigationLink { WeightPage() } label: {
-                        Label("体重", systemImage: "scalemass").foregroundColor(.success)
                     }
                 }
                 Section("用药") {
@@ -945,6 +945,7 @@ struct DailyFoodPickerSheet: View {
                                     .foregroundColor(category == c ? .white : .primary)
                                     .clipShape(Capsule())
                             }
+                            .buttonStyle(.borderless)   // 🔴List行内多Button必须borderless（同库页根因）
                         }
                     }
                     .listRowBackground(Color.clear)
@@ -966,8 +967,10 @@ struct DailyFoodPickerSheet: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name).foregroundColor(.primary)
-                                Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.sourceTag)")
-                                    .font(.caption2).foregroundColor(.secondary)
+                                // 健哥11-22令2：小字三色——注意=红 适量=黄
+                                Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "注意" : "适量") · \(item.sourceTag)")
+                                    .font(.caption2)
+                                    .foregroundColor(item.level == "red" ? .danger : .warn)
                             }
                             Spacer()
                             if store.meta.dailyFoods.contains(item.name) {
@@ -975,6 +978,7 @@ struct DailyFoodPickerSheet: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .searchable(text: $query, prompt: "搜食物")
@@ -1020,8 +1024,10 @@ struct ScenePickerSheet: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.name).foregroundColor(.primary)
+                                    // 健哥11-22令4：能吃=绿 适量=黄 注意=红
                                     Text("嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))")
-                                        .font(.caption2).foregroundColor(.secondary)
+                                        .font(.caption2)
+                                        .foregroundColor(item.level == "red" ? .danger : item.level == "yellow" ? .warn : .success)
                                 }
                                 Spacer()
                                 if store.meta.customScenes.contains(item.name) {
