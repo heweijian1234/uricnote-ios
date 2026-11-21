@@ -115,7 +115,7 @@ struct VisionPageView: View {
                 visionRow("stethoscope", L("Built on published clinical research, not marketing", "设计依据是公开的临床试验节律，不是营销噱头"))
                 visionRow("wand.and.stars", L("Design details come from the developer's own experience", "设计细节会加入开发者的个人心得"))
 
-                Text(L("This app is a logging tool, not medical advice.\nSources: ACR 2020 guideline / G-CAN 2024 / published trials.", "本 App 是记录工具，不提供诊断或治疗建议。\n数据来源：ACR 2020 指南 / G-CAN 2024 缓解标准 / 公开临床试验。")))
+                Text(L("This app is a logging tool, not medical advice. Sources: ACR 2020 guideline / G-CAN 2024 / published trials.", "本 App 是记录工具，不提供诊断或治疗建议。数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验。"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
