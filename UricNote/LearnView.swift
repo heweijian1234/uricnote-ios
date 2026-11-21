@@ -66,7 +66,7 @@ struct LearnView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("UricNote v0.1.0").font(.caption.weight(.medium))
-                            Text(L("© 2026 WEI JIAN HE · A logging tool, not medical advice", "© 2026 WEI JIAN HE · 记录工具，不构成诊疗建议")).font(.caption2).foregroundColor(.secondary)
+                Text(L("This app is a logging tool, not medical advice. Sources: ACR 2020 guideline / G-CAN 2024 / published trials.", "本 App 是记录工具，不提供诊断或治疗建议。数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验。"))
                             Text(L("Sources: ACR 2020 / G-CAN 2024 / published clinical trials", "数据来源：ACR 2020 / G-CAN 2024 / 公开临床试验")).font(.caption2).foregroundColor(.secondary)
                         }
                         Spacer()

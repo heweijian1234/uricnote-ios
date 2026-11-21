@@ -41,7 +41,7 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 Image(systemName: "quote.opening")
                     .foregroundColor(.brand)
-                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己") : L("Your reason for managing uric acid: \(m.rawValue)", "你管理尿酸，最重要的原因是：\(m.rawValue)"))
+                Text(m == .other ? (store.meta.motivationCustomText ?? L("For myself", "为了自己")) : L("Your reason for managing uric acid: \(m.rawValue)", "你管理尿酸，最重要的原因是：\(m.rawValue)"))
                     .font(.callout.weight(.medium))
                     .foregroundColor(.secondary)
             }
@@ -164,7 +164,7 @@ struct DashboardView: View {
             recallAlarmCardInline
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
-                todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？") {
+                todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？")) {
                     SleepQuickPicker()
                 }
             }
