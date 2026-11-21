@@ -20,3 +20,12 @@ enum AppLang {
 func L(_ en: String, _ zh: String) -> String {
     AppLang.current == .en ? en : zh
 }
+
+/// 存储的中文食物名 → 按语言显示（英文版查种子英文名，查不到原样返回）
+func foodDisplayName(_ zhName: String) -> String {
+    if AppLang.current == .zh { return zhName }
+    if let item = PurineDatabase.seed.first(where: { $0.name == zhName }) {
+        return item.nameEn ?? zhName
+    }
+    return zhName
+}

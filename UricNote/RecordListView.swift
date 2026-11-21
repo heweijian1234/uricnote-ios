@@ -641,7 +641,7 @@ struct FoodPage: View {
                     if f.noTriggerToday {
                         Label(L("Logged: no high-purine today ✓", "已记：今天没碰高嘌呤 ✓"), systemImage: "checkmark.seal.fill").foregroundColor(.success)
                     } else if !f.items.isEmpty || !f.scenes.isEmpty {
-                        Text(L("Logged: ", "已记：") + (f.scenes + f.items).joined(separator: "、"))
+                        Text(L("Logged: ", "已记：") + (f.scenes + f.items).map(foodDisplayName).joined(separator: "、"))
                             .font(.callout)
                     }
                 }
@@ -677,7 +677,7 @@ struct FoodPage: View {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                         ForEach(store.meta.dailyFoods, id: \.self) { name in
                             FoodChip(
-                                name: name,
+                                name: foodDisplayName(name),
                                 selected: store.todayFood?.items.contains(name) == true,
                                 tint: .danger
                             ) { toggle(name) }
@@ -917,7 +917,7 @@ struct DailyFoodPickerSheet: View {
     private var candidates: [PurineItem] {
         if store.purineItems.isEmpty { store.purineItems = PurineDatabase.seed }
         let levelKey = ["yellow", "red"][tab]
-        let byQuery = store.purineItems.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+        let byQuery = store.purineItems.filter { query.isEmpty || (($0.name + " " + ($0.nameEn ?? "")).localizedCaseInsensitiveContains(query)) }
         let byCategory = category == L("All", "全部") ? byQuery : byQuery.filter { $0.inferredCategory == category }
         return byCategory.filter { $0.level == levelKey }.sorted { $0.name < $1.name }
     }
@@ -966,9 +966,9 @@ struct DailyFoodPickerSheet: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.name).foregroundColor(.primary)
+                                Text(item.displayName).foregroundColor(.primary)
                                 // 健哥11-22令2：小字三色——注意=红 适量=黄
-                                Text(L("Purine ~\(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "Caution" : "Moderate") · \(item.sourceTag)", "嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "注意" : "适量") · \(item.sourceTag)"))
+                                Text(L("Purine ~\(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "Caution" : "Moderate") · \(item.displaySource)", "嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(item.level == "red" ? "注意" : "适量") · \(item.displaySource)"))
                                     .font(.caption2)
                                     .foregroundColor(item.level == "red" ? .danger : .warn)
                             }
@@ -1023,7 +1023,7 @@ struct ScenePickerSheet: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name).foregroundColor(.primary)
+                                    Text(item.displayName).foregroundColor(.primary)
                                     // 健哥11-22令4：能吃=绿 适量=黄 注意=红
                                     Text(L("Purine ~\(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))", "嘌呤约 \(Int(item.uricPer100g)) mg/100g · \(levelName(item.level))"))
                                         .font(.caption2)

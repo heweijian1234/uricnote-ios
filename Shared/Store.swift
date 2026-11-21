@@ -142,10 +142,44 @@ struct PurineItem: Identifiable, Codable {
     var level: String              // red(>150) / yellow(50-150) / green(<50)
     var sourceTag: String          // "ACR 2020" / L("NHHC 2024 (China)", "卫健委2024")
     var category: String? = nil    // 健哥11-21令：食物分类导航（Optional默认——旧数据零破坏；运行时推断补齐）
+    var nameEn: String? = nil      // 健哥11-22令：英文名（英文版显示；中文名仍是存储key——数据兼容）
+    var sourceTagEn: String? = nil // 健哥11-22令：英文来源标注
 
-    /// 分类推断（关键词映射——种子174条没写category，按名字推断；推断不出归"其他"）
+    /// 显示名：英文版优先 nameEn（没有则原样），中文版原名
+    var displayName: String {
+        AppLang.current == .en ? (nameEn ?? name) : name
+    }
+    /// 显示来源
+    var displaySource: String {
+        AppLang.current == .en ? (sourceTagEn ?? sourceTag) : sourceTag
+    }
+
+    /// 英文关键词分类规则（英文版按 nameEn 推断）
+    static let enRules: [(String, String)] = [
+        ("hot pot", "饮食场景"), ("bbq", "饮食场景"), ("buffet", "饮食场景"), ("banquet", "饮食场景"), ("wedding", "饮食场景"),
+        ("sushi", "饮食场景"), ("japanese", "饮食场景"), ("korean", "饮食场景"), ("izakaya", "饮食场景"), ("party", "饮食场景"),
+        ("dinner", "饮食场景"), ("late night", "饮食场景"), ("cake", "饮食场景"), ("brunch", "饮食场景"),
+        ("water", "饮料"), ("sparkling", "饮料"), ("soda", "饮料"), ("coconut water", "饮料"), ("lemonade", "饮料"),
+        ("beer", "酒类"), ("wine", "酒类"), ("vodka", "酒类"), ("whisky", "酒类"), ("whiskey", "酒类"), ("sake", "酒类"), ("liqueur", "酒类"), ("alcohol", "酒类"),
+        ("tea", "茶叶"), ("matcha", "茶叶"), ("coffee", "咖啡"), ("espresso", "咖啡"), ("latte", "咖啡"),
+        ("milk tea", "奶茶"), ("boba", "奶茶"),
+        ("soup", "汤类"), ("broth", "汤类"), ("stock", "汤类"),
+        ("chips", "零食"), ("crisps", "零食"), ("cookie", "零食"), ("candy", "零食"), ("chocolate", "零食"), ("ice cream", "零食"), ("popcorn", "零食"), ("jelly", "零食"), ("pudding", "零食"), ("snack", "零食"), ("gummy", "零食"), ("jerky", "零食"), ("dried meat", "零食"), ("nut", "坚果"), ("almond", "坚果"), ("walnut", "坚果"), ("cashew", "坚果"), ("peanut", "零食"), ("seed", "零食"),
+        ("bread", "面包"), ("baguette", "面包"), ("croissant", "面包"), ("bun", "面包"), ("toast", "面包"), ("sandwich", "面包"), ("burger", "面包"), ("pizza", "面包"), ("rice", "面包"), ("noodle", "面包"), ("pasta", "面包"), ("oat", "面包"), ("wheat", "面包"), ("dumpling", "面包"), ("pancake", "面包"),
+        ("cola", "饮料"), ("juice", "饮料"), ("sugary", "饮料"), ("soft drink", "饮料"), ("milk", "饮料"), ("yogurt", "饮料"), ("soy milk", "饮料"), ("kefir", "饮料"), ("honey", "饮料"), ("juice", "饮料"),
+        ("fish", "海鲜"), ("sashimi", "海鲜"), ("tuna", "海鲜"), ("salmon", "海鲜"), ("anchovy", "海鲜"), ("sardine", "海鲜"), ("oyster", "海鲜"), ("clam", "海鲜"), ("mussel", "海鲜"), ("scallop", "海鲜"), ("crab", "海鲜"), ("shrimp", "海鲜"), ("prawn", "海鲜"), ("lobster", "海鲜"), ("squid", "海鲜"), ("octopus", "海鲜"), ("sea urchin", "海鲜"), ("caviar", "海鲜"), ("roe", "海鲜"), ("seaweed", "海鲜"), ("kelp", "海鲜"), ("jellyfish", "海鲜"), ("abalone", "海鲜"), ("cod", "海鲜"), ("mackerel", "海鲜"), ("eel", "海鲜"),
+        ("liver", "肉类"), ("kidney", "肉类"), ("brain", "肉类"), ("meat", "肉类"), ("beef", "肉类"), ("pork", "肉类"), ("lamb", "肉类"), ("mutton", "肉类"), ("chicken", "肉类"), ("duck", "肉类"), ("goose", "肉类"), ("sausage", "肉类"), ("ham", "肉类"), ("bacon", "肉类"), ("hot dog", "肉类"), ("egg", "肉类"), ("steak", "肉类"), ("rib", "肉类"), ("brisket", "肉类"), ("jerky", "零食"),
+        ("vegetable", "蔬菜"), ("broccoli", "蔬菜"), ("cabbage", "蔬菜"), ("spinach", "蔬菜"), ("lettuce", "蔬菜"), ("celery", "蔬菜"), ("asparagus", "蔬菜"), ("mushroom", "蔬菜"), ("fungus", "蔬菜"), ("tofu", "蔬菜"), ("bean", "蔬菜"), ("pea", "蔬菜"), ("corn", "蔬菜"), ("potato", "蔬菜"), ("yam", "蔬菜"), ("taro", "蔬菜"), ("lotus root", "蔬菜"), ("tomato", "蔬菜"), ("cucumber", "蔬菜"), ("carrot", "蔬菜"), ("radish", "蔬菜"), ("eggplant", "蔬菜"), ("pepper", "蔬菜"), ("onion", "蔬菜"), ("garlic", "蔬菜"), ("pumpkin", "蔬菜"), ("melon", "蔬菜"), ("okra", "蔬菜"), ("kale", "蔬菜"), ("sprout", "蔬菜"), ("watercress", "蔬菜"), ("chard", "蔬菜"), ("artichoke", "蔬菜"), ("cauliflower", "蔬菜"), ("zucchini", "蔬菜"),
+        ("apple", "水果"), ("orange", "水果"), ("banana", "水果"), ("grape", "水果"), ("pear", "水果"), ("peach", "水果"), ("berry", "水果"), ("berries", "水果"), ("cherry", "水果"), ("mango", "水果"), ("pineapple", "水果"), ("kiwi", "水果"), ("durian", "水果"), ("watermelon", "水果"), ("melon", "水果"), ("lemon", "水果"), ("lime", "水果"), ("grapefruit", "水果"), ("pomegranate", "水果"), ("fig", "水果"), ("avocado", "水果"), ("jackfruit", "水果"), ("mangosteen", "水果"), ("guava", "水果"), ("longan", "水果"), ("rambutan", "水果"), ("lychee", "水果"), ("persimmon", "水果"), ("sugarcane", "水果"), ("date", "水果"), ("plum", "水果"), ("apricot", "水果"), ("coconut", "水果"), ("papaya", "水果"), ("strawberr", "水果"), ("blueberr", "水果"), ("cranberr", "水果"),
+    ]
+
+    /// 分类推断（关键词映射——种子没写category按名字推断；推断不出归"其他"）
     var inferredCategory: String {
         if let c = category, !c.isEmpty { return c }
+        if AppLang.current == .en, let en = nameEn?.lowercased() {
+            for (kw, cat) in Self.enRules where en.contains(kw) { return cat }
+            return "其他"
+        }
         let rules: [(String, String)] = [
             // 饮食场景优先（含复合词的食物先判场景）——健哥11-21晚令：场景扩充
             ("火锅", "饮食场景"), ("烧烤", "饮食场景"), ("自助", "饮食场景"), ("快餐", "饮食场景"), ("宴", "饮食场景"), ("聚餐", "饮食场景"),
