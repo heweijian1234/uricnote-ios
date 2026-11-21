@@ -709,7 +709,7 @@ struct FoodPage: View {
                         addScene(name, auto: FoodLibrary.scenes.first(where: { $0.name == name })?.autoItems ?? [])
                     } label: {
                         HStack {
-                            Text(name).foregroundColor(.primary)
+                            Text(foodDisplayName(name)).foregroundColor(.primary)
                             Spacer()
                             if store.todayFood?.scenes.contains(name) == true {
                                 Image(systemName: "checkmark.circle.fill").foregroundColor(.danger)
