@@ -22,6 +22,7 @@ enum MotivationChoice: String, Codable, CaseIterable {
     case painFree = "不再被疼醒"
     case work = "能正常工作赚钱"
     case family = "陪家人更久"
+    case other = "其他"   // 健哥11-21令：第四选项，用户自填（存 motivationCustomText）
 }
 
 // MARK: - 化验值（v11：+肌酐可选字段 C12）
@@ -203,6 +204,7 @@ struct RecallAlarm: Codable {
 struct AppMeta: Codable {
     var onboardingDone: Bool = false
     var motivation: MotivationChoice?
+    var motivationCustomText: String? = nil   // 健哥11-21令：动机选"其他"时的自填文本（仪表盘铭牌回显）
     var lastOpenedAt: Date?
     var unitIsUmol: Bool = true
     var proUnlocked: Bool = false

@@ -307,7 +307,7 @@ struct ChangeView: View {
             }
             if let m = store.meta.motivation {
                 Section {
-                    Text("身体好了，\(m.rawValue == "陪家人更久" ? "陪家人的日子才安稳。" : m.rawValue == "不再被疼醒" ? "才不用再被疼醒。" : "工作才有着落。")")
+                    Text("身体好了，\(m == .other ? (store.meta.motivationCustomText ?? "一切才更从容。") : m.rawValue == "陪家人更久" ? "陪家人的日子才安稳。" : m.rawValue == "不再被疼醒" ? "才不用再被疼醒。" : "工作才有着落。")")
                         .font(.callout).foregroundColor(.secondary)
                 }
             }

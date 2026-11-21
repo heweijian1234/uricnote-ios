@@ -14,6 +14,7 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     if store.needsGapConfirm { gapBanner }
+                    motivationBanner   // 健哥11-21令：引导选的动机上仪表盘铭牌（含"其他"自填回显）
                     wellControlledBadge
                     bigNumbers
                     painFreeConfirmRow   // v11.1 #9：记无痛（C 方案）
@@ -31,6 +32,24 @@ struct DashboardView: View {
             .onAppear {
                 if store.needsGapConfirm { showGapConfirm = true }
             }
+        }
+    }
+
+    // 动机铭牌（健哥11-21令：你管理尿酸的原因——一直陪着你）
+    @ViewBuilder
+    private var motivationBanner: some View {
+        if let m = store.meta.motivation {
+            HStack(spacing: 10) {
+                Image(systemName: "quote.opening")
+                    .foregroundColor(.brand)
+                Text(m == .other ? (store.meta.motivationCustomText ?? "为了自己") : "你管理尿酸，最重要的原因是：\(m.rawValue)")
+                    .font(.callout.weight(.medium))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.brand.opacity(0.08))
+            .cornerRadius(12)
         }
     }
 

@@ -7,6 +7,7 @@ struct OnboardingView: View {
     @ObservedObject var store = Store.shared
     @State private var step = 0
     @State private var motivation: MotivationChoice?
+    @State private var otherMotivationText = ""   // 健哥11-21令：其他-自填
     @State private var heightText = ""
     @State private var weightText = ""
     @State private var ageText = ""
@@ -42,11 +43,11 @@ struct OnboardingView: View {
                     Text(step == 2 ? "开始使用" : (step == 1 ? "保存并继续" : "下一步"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
-                        .background(step == 0 && motivation == nil ? Color.gray.opacity(0.3) : Color.brand)
+                        .background(step == 0 && (motivation == nil || (motivation == .other && otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty)) ? Color.gray.opacity(0.3) : Color.brand)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                 }
-                .disabled(step == 0 && motivation == nil)
+                .disabled(step == 0 && (motivation == nil || (motivation == .other && otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty)))
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
@@ -82,6 +83,14 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
             }
+            // 健哥11-21令：选"其他"展开自填框（这段话会放在仪表盘一直陪你）
+            if motivation == .other {
+                TextField("写下你的原因…（它会出现在仪表盘）", text: $otherMotivationText, axis: .vertical)
+                    .lineLimit(2...3)
+                    .padding(12)
+                    .background(Color.cardBG)
+                    .cornerRadius(12)
+            }
         }
         .padding(.horizontal, 24)
     }
@@ -91,13 +100,14 @@ struct OnboardingView: View {
         case .painFree: return "sun.max"
         case .work: return "briefcase"
         case .family: return "heart"
+        case .other: return "pencil.circle"
         }
     }
 
     // 第2步：健康档案引导（v11.1：替换原习惯种子步——A6 档案前置，越早填报告越完整）
     private var profileStep: some View {
         VStack(spacing: 20) {
-            Text("先认识一下你")
+            Text("我是你的伙伴，想认识一下你")
                 .font(.title2.bold())
             Text("身高体重年龄性别——医生看记录先想知道这些。只存本机，可以以后再补。")
                 .font(.subheadline)
@@ -142,42 +152,43 @@ struct OnboardingView: View {
         }
     }
 
-    // 第3步：愿景页（v10 完整版——理由三条含"开发者本人就是高尿酸患者"）
+    // 第3步：愿景页（健哥11-21令全量改版——伙伴口吻/蜕变宣言/功能重述/选择理由重写）
     private var visionStep: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("这不是一个记录工具。")
+                Text("这不只是一份记录。")
                     .font(.title.bold())
-                Text("这是一条从「被疼痛打醒」走到「痛风不再占据你的脑子」的路。")
+                Text("这是一次尊重身体，自我救赎的蜕变举动。愿你能更幸福的去体验生活。")
                     .font(.body)
                     .foregroundColor(.secondary)
 
                 Divider()
 
-                Text("我们相信什么")
+                Text("我们相信")
                     .font(.headline)
-                Text("尿酸降不下来，从来不是因为你不努力——七成由身体代谢决定，剩下三成才轮到生活方式。这里不评判你，只帮你把能控制的三成管好。")
+                Text("只需要养成习惯。")
                     .font(.callout)
 
                 Text("现在就能用")
                     .font(.headline)
-                visionRow(icon: "bolt", text: "3 秒记一次发作，半夜痛醒也能记")
-                visionRow(icon: "fork.knife", text: "食物嘌呤一查就知道，带临床指南背书")
-                visionRow(icon: "pills", text: "吃药喝水，一屏搞定")
-                visionRow(icon: "doc.text", text: "一页报告带给医生——他只有 15 分钟，这一页足够")
+                visionRow(icon: "fork.knife", text: "食物嘌呤清单，区分建议食用、不建议食用，带临床指南背书")
+                visionRow(icon: "brain", text: "每天回忆记录，辅助医生寻找你疼痛的嘌呤因子")
+                visionRow(icon: "pills", text: "提醒吃药，记录喝水量习惯")
+                visionRow(icon: "doc.text", text: "一页报告带给医生，让他快速且详细的了解你的近况，获得更准确的建议")
 
                 Text("会随时间长大")
                     .font(.headline)
-                visionRow(icon: "chart.line.uptrend.xyaxis", text: "7 天后，看到你的趋势线")
-                visionRow(icon: "sparkles", text: "1 个月后，告诉你发作前共同吃了什么")
-                visionRow(icon: "rosette", text: "90 天无痛 + 尿酸达标，点亮「已控制」")
-                visionRow(icon: "figure.walk", text: "更远处：它是你身边那个记性很好的病友")
+                visionRow(icon: "chart.line.uptrend.xyaxis", text: "会随时间记录，画出你的蜕变之路")
+                visionRow(icon: "calendar", text: "7 天后，看到你的习惯趋势线")
+                visionRow(icon: "sparkles", text: "一个月后，发现疼痛前共同吃了什么")
+                visionRow(icon: "figure.walk", text: "更远处：我是一直陪你走过来的病友")
 
-                Text("选择它的理由")
+                Text("选择我的理由")
                     .font(.headline)
-                visionRow(icon: "checkmark.seal", text: "免费记录，一次买断解锁全部——无订阅、无广告")
+                visionRow(icon: "person.crop.circle.badge.checkmark", text: "开发者本人就是高尿酸痛风患者，正在改善的路上，此 App 是自用也是想帮助更多患友")
+                visionRow(icon: "checkmark.seal", text: "免费使用，持续更新，日后不排除买断制与订阅制，但与你无关——开发初期，下载的患友都是终身免费使用")
                 visionRow(icon: "stethoscope", text: "设计依据是公开的临床试验节律，不是营销噱头")
-                visionRow(icon: "person.crop.circle.badge.checkmark", text: "开发者本人就是高尿酸患者——每条反馈都会被认真读")
+                visionRow(icon: "wand.and.stars", text: "设计细节会加入开发者的个人心得")
 
                 Text("本 App 是记录工具，不提供诊断或治疗建议。数据来源：ACR 2020 指南 / G-CAN 2024 缓解标准 / 公开临床试验。")
                     .font(.caption2)
@@ -199,6 +210,7 @@ struct OnboardingView: View {
     private func next() {
         if step == 0 {
             if let m = motivation { store.meta.motivation = m }
+            store.meta.motivationCustomText = motivation == .other && !otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty ? otherMotivationText.trimmingCharacters(in: .whitespaces) : nil
             step = 1
         } else if step == 1 {
             saveProfileIfFilled()
@@ -211,6 +223,9 @@ struct OnboardingView: View {
     private func finish() {
         // 跳过也记录动机（若有）
         if let m = motivation { store.meta.motivation = m }
+        if motivation == .other && !otherMotivationText.trimmingCharacters(in: .whitespaces).isEmpty {
+            store.meta.motivationCustomText = otherMotivationText.trimmingCharacters(in: .whitespaces)
+        }
         store.meta.onboardingDone = true
         store.meta.lastOpenedAt = Date()
         store.save()
