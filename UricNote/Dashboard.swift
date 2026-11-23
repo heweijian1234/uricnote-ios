@@ -338,12 +338,6 @@ struct DashboardView: View {
                     .foregroundColor(.white)
                     .cornerRadius(14)
             }
-            HStack(spacing: 10) {
-                // 健哥11-23令⑥：记体重快捷取消（走记录页体重——趋势数据源头统一）
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.cardBG)
-                    .cornerRadius(12)
             }
         }
     }
