@@ -338,7 +338,6 @@ struct DashboardView: View {
                     .foregroundColor(.white)
                     .cornerRadius(14)
             }
-            }
         }
     }
 
