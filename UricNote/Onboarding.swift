@@ -143,6 +143,7 @@ struct OnboardingView: View {
     }
 
     private func saveProfileIfFilled() {
+        // 健哥11-23令①：引导填的身高体重年龄性别=全局档案唯一源（化验页体重/门诊报告/依从率全读它）
         if let h = Double(heightText), h > 0 { store.profile.heightCm = h }
         if let w = Double(weightText), w > 0 { store.profile.weightKg = w }
         if let a = Int(ageText), a > 0 { store.profile.age = a }
@@ -150,6 +151,7 @@ struct OnboardingView: View {
         if store.profile.heightCm != nil || store.profile.age != nil {
             store.profile.isComplete = true
         }
+        store.save()   // 🔴显式落盘（防跳过didSet链路）
     }
 
     // 第3步：愿景页（健哥11-21令全量改版——伙伴口吻/蜕变宣言/功能重述/选择理由重写）

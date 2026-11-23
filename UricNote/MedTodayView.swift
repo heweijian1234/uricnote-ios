@@ -22,6 +22,20 @@ struct MedTodayView: View {
                     }
                     // v11.1：按次打卡（一天 N 次就 N 个按钮；全打完变完成态）
                     if store.todayMedTodos.contains(where: { !$0.done }) {
+                        // 健哥11-23令③：今天发作不吃降酸药（一键记整天未服）
+                        Button {
+                            for t in store.todayMedTodos where !t.done {
+                                store.medLogs.append(MedLog(date: Date(), planRef: plan.id, taken: false, slot: t.slot, provenance: .recorded))
+                            }
+                            store.save()
+                            UricCelebrate.show(L("Noted: flare day, urate-lowering meds held", "已记：今天发作，未服降酸药"))
+                        } label: {
+                            Label(L("Flare today — didn't take urate-lowering meds", "今天发作，不吃降尿酸药物"), systemImage: "exclamationmark.circle")
+                                .font(.callout)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    if store.todayMedTodos.contains(where: { !$0.done }) {
                         HStack(spacing: 10) {
                             ForEach(store.todayMedTodos.filter { !$0.done }, id: \.slot) { t in
                                 Button {
@@ -47,8 +61,19 @@ struct MedTodayView: View {
                 } footer: {
                     Text(L("Before stopping meds, see Myth #2: pain-free ≠ cured — most people flare again within 6 months after stopping. (Follow your doctor.)", "停药前请看「误区」卡 #2：不疼了不等于好了——停药后多数人半年内复发。（本提示为患者共识科普，具体请遵医嘱）"))
                 }
-                // 健哥11-21令8：吃药闹钟提醒（用户自定义，每天响，最多3个）
+                // 健哥11-21令8：吃药闹钟提醒（用户自定义，每天响，最多3个；11-23令③加总开关不强制）
                 Section {
+                    // 健哥11-23令③：闹钟总开关（默认开，可关）
+                    Toggle(L("Alarms enabled", "闹钟开"), isOn: Binding(
+                        get: { store.medPlans.first(where: { $0.id == plan.id })?.alarmsEnabled ?? true },
+                        set: { on in
+                            if let i = store.medPlans.firstIndex(where: { $0.id == plan.id }) {
+                                store.medPlans[i].alarmsEnabled = on
+                                store.save()
+                                if on { scheduleMedReminder() } else { cancelMedReminder() }
+                            }
+                        }
+                    ))
                     ForEach(plan.reminderTimes.indices, id: \.self) { idx in
                         DatePicker(L("Alarm \(idx + 1)", "闹钟 \(idx + 1)"), selection: Binding(
                             get: { store.medPlans.first(where: { $0.id == plan.id })?.reminderTimes[idx] ?? plan.reminderTimes[idx] },
@@ -89,6 +114,7 @@ struct MedTodayView: View {
                     }
                 } header: {
                     Text(L("Medication reminders (daily)", "吃药闹钟提醒（每天）"))
+                /* Brother Jiang's order 11-23 ③: alarm master switch inserted before section */
                 } footer: {
                     Text(L("Medication reminders at your own times — up to 3.", "到点提醒吃药——时间自己定，最多 3 个。"))
                 }
@@ -155,6 +181,8 @@ struct MedTodayView: View {
 
     // 健哥11-21令8：多闹钟版（按 reminderTimes 逐个注册每天响；最多3个）
     func scheduleMedReminder() {
+        // 健哥11-23令③：总开关关着就不排
+        guard activePlan?.alarmsEnabled ?? true else { return }
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }

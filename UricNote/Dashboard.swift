@@ -23,6 +23,7 @@ struct DashboardView: View {
                     dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷
                     greenZoneCard    // 中低嘌呤清单查阅卡（v11.1 #2 改名）
                     quickActions     // 事件型（发作/化验/体重）
+                    recallAlarmCardInline   // 健哥11-23令⑦：回顾提醒移到最下方
                 }
                 .padding()
             }
@@ -160,8 +161,7 @@ struct DashboardView: View {
     // 今日待办行（B1 驾驶舱核心：该记没记的显示，记完打勾消失）
     private var todayTodos: some View {
         VStack(spacing: 8) {
-            // 健哥11-21令：每晚回顾提醒上移到"昨晚几点睡的？"上方
-            recallAlarmCardInline
+            // 健哥11-23令⑦：回顾提醒移到最下方
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
                 todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？")) {
@@ -339,8 +339,7 @@ struct DashboardView: View {
                     .cornerRadius(14)
             }
             HStack(spacing: 10) {
-                // 健哥11-21令：记化验值取消（走三数字区入口）——记体重保留
-                NavigationLink(L("Log weight", "记体重")) { WeightEditor() }
+                // 健哥11-23令⑥：记体重快捷取消（走记录页体重——趋势数据源头统一）
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(Color.cardBG)
@@ -429,6 +428,7 @@ struct SleepQuickPicker: View {
                     Button {
                         let lastNight = Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: Date()))!
                         store.sleepLogs.append(SleepLog(night: lastNight, bucket: b))
+                        store.save()   // 🔴显式落盘（append本触发didSet——双保险）
                         UricCelebrate.show(L("Logged", "记下了") + (b >= 2 ? L(" — late nights can trigger flares; rest early tonight", "——睡太晚也会诱发发作，今晚早点休息") : ""))
                         dismiss()
                     } label: {
@@ -601,24 +601,28 @@ struct HealthProfileEditor: View {
         Form {
             Section(L("Basics", "基础信息")) {
                 HStack {
-                    TextField(L("Height", "身高"), text: Binding(get: { store.profile.heightCm.map { String(Int($0)) } ?? "" }, set: { store.profile.heightCm = Double($0) }))
+                    TextField(L("Height", "身高"), text: Binding(get: { store.profile.heightCm.map { String(Int($0)) } ?? "" }, set: { store.profile.heightCm = Double($0); store.save() }))
                         .keyboardType(.numberPad)
                     Text("cm").foregroundColor(.secondary)
                 }
                 HStack {
-                    TextField(L("Weight", "体重"), text: Binding(get: { store.profile.weightKg.map { String(format: "%.1f", $0) } ?? "" }, set: { store.profile.weightKg = Double($0) }))
+                    TextField(L("Weight", "体重"), text: Binding(get: { store.profile.weightKg.map { String(format: "%.1f", $0) } ?? "" }, set: { store.profile.weightKg = Double($0); store.save() }))
                         .keyboardType(.decimalPad)
                     Text("kg").foregroundColor(.secondary)
                 }
                 HStack {
-                    TextField(L("Age", "年龄"), text: Binding(get: { store.profile.age.map { String($0) } ?? "" }, set: { store.profile.age = Int($0) }))
+                    // 健哥11-23令⑧：年龄改出生年月日（自动计算）
+                    DatePicker(L("Date of birth", "出生年月日"), selection: Binding(
+                        get: { store.profile.birthDate ?? Calendar.current.date(byAdding: .year, value: -40, to: Date())! },
+                        set: { store.profile.birthDate = $0; store.profile.age = Calendar.current.dateComponents([.year], from: $0, to: Date()).year; store.save() }
+                    ), displayedComponents: .date)
                         .keyboardType(.numberPad)
                     Text(L("years old", "岁")).foregroundColor(.secondary)
                 }
-                Picker(L("Gender", "性别"), selection: Binding(get: { store.profile.gender ?? "男" }, set: { store.profile.gender = $0 })) {
+                Picker(L("Gender", "性别"), selection: Binding(get: { store.profile.gender ?? "男" }, set: { store.profile.gender = $0; store.save() })) {
                     Text(L("Male", "男")).tag("男"); Text(L("Female", "女")).tag("女"); Text(L("Other", "其他")).tag("其他")
                 }
-                TextField(L("Region (e.g. Guangzhou)", "地区（如：广东广州）"), text: Binding(get: { store.profile.region ?? "" }, set: { store.profile.region = $0 }))
+                TextField(L("Region (e.g. Guangzhou)", "地区（如：广东广州）"), text: Binding(get: { store.profile.region ?? "" }, set: { store.profile.region = $0; store.save() }))
             }
             Section(L("Conditions (multi-select)", "现有疾病（可多选）")) {
                 ForEach(conditionOptions, id: \.self) { c in
@@ -679,11 +683,11 @@ struct HealthProfileEditor: View {
                 }
             }
             Section(L("Allergies", "过敏史")) {
-                TextField(L("Drug allergy (e.g. allopurinol)", "药物过敏（如：别嘌醇过敏）"), text: Binding(get: { store.profile.drugAllergies ?? "" }, set: { store.profile.drugAllergies = $0.isEmpty ? nil : $0 }))
-                TextField(L("Food allergy", "食物过敏"), text: Binding(get: { store.profile.foodAllergies ?? "" }, set: { store.profile.foodAllergies = $0.isEmpty ? nil : $0 }))
+                TextField(L("Drug allergy (e.g. allopurinol)", "药物过敏（如：别嘌醇过敏）"), text: Binding(get: { store.profile.drugAllergies ?? "" }, set: { store.profile.drugAllergies = $0.isEmpty ? nil : $0; store.save() }))
+                TextField(L("Food allergy", "食物过敏"), text: Binding(get: { store.profile.foodAllergies ?? "" }, set: { store.profile.foodAllergies = $0.isEmpty ? nil : $0; store.save() }))
             }
             Section {
-                Picker(L("Immediate family with gout", "直系亲属有痛风吗"), selection: Binding(get: { store.profile.familyGout ?? L("Not sure", "不确定") }, set: { store.profile.familyGout = $0 })) {
+                Picker(L("Immediate family with gout", "直系亲属有痛风吗"), selection: Binding(get: { store.profile.familyGout ?? L("Not sure", "不确定") }, set: { store.profile.familyGout = $0; store.save() })) {
                     ForEach(familyOptions, id: \.self) { Text($0).tag($0) }
                 }
             } header: {

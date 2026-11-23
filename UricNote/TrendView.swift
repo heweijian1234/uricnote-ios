@@ -24,10 +24,42 @@ struct TrendView: View {
                     }
                 }
                 Section(L("Three trend lines (real, measurable numbers)", "三线趋势（真实可算指标）")) {
-                    trendRow(icon: "pills.fill", color: .brand, title: L("Med adherence (30 days)", "服药依从率（30 天）"), value: adherenceText)
+                    // 健哥11-23令⑩：依从率→药物使用30天详情（每日吃了没/止痛药）
+    trendRow(icon: "pills.fill", color: .brand, title: L("Medication — last 30 days", "药物使用（近 30 天）"), value: medDetailText)
                     trendRow(icon: "sun.max", color: .warn, title: L("Pain-free days", "无痛天数"), value: store.flareFreeDays.map { L("\($0) days", "\($0) 天") } ?? "—")
                     trendRow(icon: "moon.fill", color: .brand, title: L("Sleep (14-day avg)", "近 14 天入睡（平均）"), value: sleepAvgText)
                     trendRow(icon: "drop.fill", color: .water, title: L("Water today", "今天喝水"), value: waterText)
+            // 健哥11-23令⑪：喝水30天柱状趋势
+            if store.waterDays.count >= 2 {
+                Chart(store.waterDays.suffix(30)) { w in
+                    BarMark(
+                        x: .value("Day", w.day, unit: .day),
+                        y: .value("ml", w.totalMl)
+                    )
+                    .foregroundStyle(w.totalMl >= w.goalMl ? Color.water : Color.water.opacity(0.35))
+                }
+                .chartYAxis { AxisMarks(position: .trailing) }
+                .frame(height: 90)
+                .padding(.vertical, 4)
+            }
+            // 健哥11-23令⑪：入睡30天散点趋势（bucket 0-3→23点前~1点后）
+            if store.sleepLogs.count >= 2 {
+                Chart(store.sleepLogs.suffix(30)) { s2 in
+                    PointMark(
+                        x: .value("Night", s2.night, unit: .day),
+                        y: .value("bucket", s2.bucket)
+                    )
+                    .foregroundStyle(s2.bucket >= 2 ? Color.warn : Color.brand)
+                }
+                .chartYScale(domain: -0.5...3.5)
+                .chartYAxis {
+                    AxisMarks(values: [0, 1, 2, 3]) { v in
+                        AxisValueLabel(["<23", "23-24", "0-1", ">1"][min(v.index, 3)])
+                    }
+                }
+                .frame(height: 90)
+                .padding(.vertical, 4)
+            }
                 }
                 // v11.1：坚持热力格（HabitKit 式——长期管理病的坚持度可视化）
                 Section {
@@ -88,8 +120,8 @@ struct TrendView: View {
                             Image(systemName: "doc.text.viewfinder")
                             VStack(alignment: .leading, spacing: 2) {
                                 // A1：门诊记录（不是医生报告——发给医生的日常记录）
-                                Text(L("Clinic report", "门诊记录")).font(.body.weight(.medium))
-                                Text(L("One A4 page: profile + trends + flare history + meds + lifestyle", "一页 A4：档案+趋势+发作史+用药+生活方式")).font(.caption).foregroundColor(.secondary)
+                                Text(L("Life record export", "生活记录导出")).font(.body.weight(.medium))
+                                Text(L("Your complete life record — for doctor visits or self review", "完整生活记录——就诊时给医生看，或自己回顾")).font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
                             Image(systemName: "lock.open")
@@ -109,6 +141,19 @@ struct TrendView: View {
         if let g = store.profile.gender { parts.append(g) }
         if !store.profile.conditions.isEmpty { parts.append(L("Conditions: ", "共病：") + store.profile.conditions.joined(separator: "、")) }
         return parts.isEmpty ? L("Health profile", "健康档案") : parts.joined(separator: " · ")
+    }
+
+    /// 健哥11-23令⑩：药物30天详情文字（X天服用·Y天未服·Z次发作日止痛药）
+    private var medDetailText: String {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let logs = store.medLogs.filter { $0.date >= cutoff }
+        let active = store.medPlans.first(where: { $0.active })
+        let takenDays = Set(logs.filter { $0.taken }.map { Calendar.current.startOfDay(for: $0.date) }).count
+        let missedDays = Set(logs.filter { !$0.taken }.map { Calendar.current.startOfDay(for: $0.date) }).count
+        // 止痛药=发作记录里的tookPainkiller为真且在30天内
+        let pkCount = store.flares.filter { $0.startDate >= cutoff && ($0.tookPainkiller ?? false) }.count
+        if active == nil && logs.isEmpty { return L("no plan", "无用药计划") }
+        return L("\(takenDays)d taken · \(missedDays)d held · \(pkCount) painkiller uses", "\(takenDays)天服·\(missedDays)天未服·止痛药\(pkCount)次")
     }
 
     private var adherenceText: String {
@@ -310,7 +355,7 @@ struct ChangeView: View {
             }
         }
         .navigationTitle(L("Change", "改变"))
-        .toolbar { NavigationLink(L("Log weight", "记体重")) { WeightEditor() } }
+        
     }
 
     private func changeRow(_ label: String, current: String, prior: String) -> some View {
@@ -351,7 +396,7 @@ enum ClinicReportGenerator {
         guard let root = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
         var top = root
         while let p = top.presentedViewController { top = p }
-        let alert = UIAlertController(title: L("Export clinic report", "导出门诊记录"), message: L("Pick a format", "选择格式"), preferredStyle: .actionSheet)
+        let alert = UIAlertController(title: L("Export life record", "导出生活记录"), message: L("Pick a format", "选择格式"), preferredStyle: .actionSheet)
         for fmt in ExportFormat.allCases {
             alert.addAction(UIAlertAction(title: fmt.displayName, style: .default) { _ in
                 export(store: store, format: fmt)
@@ -372,7 +417,7 @@ enum ClinicReportGenerator {
             tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.pdf")
             let fmt = UIGraphicsPDFRendererFormat()
             fmt.documentInfo = [
-                kCGPDFContextTitle as String: "UricNote Clinic Report",
+                kCGPDFContextTitle as String: "UricNote Life Record",
                 kCGPDFContextCreator as String: "UricNote"
             ]
             // A4 595×842pt，多页自动分页
@@ -480,7 +525,7 @@ enum ClinicReportGenerator {
     private static func buildTXT(store: Store, readings: [UricReading], flares: [Flare]) -> String {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
         let T = { (en: String, zh: String) -> String in L(en, zh) }
-        var t = "===== \(T("UricNote Clinic Report", "UricNote 门诊记录")) =====\n"
+        var t = "===== \(T("UricNote Life Record", "UricNote 生活记录")) =====\n"
         t += "\(T("Generated", "生成时间")): \(df.string(from: Date()))\n\n"
         t += "[\(T("PROFILE", "档案"))]\n"
         let p = store.profile
@@ -586,7 +631,7 @@ enum ClinicReportGenerator {
         .tag{display:inline-block;background:#e8f4f0;color:#0E7C66;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px}
         </style></head><body>
         <div class=header>
-          <div><h1>\(T("UricNote Clinic Report", "UricNote 门诊记录"))</h1><div class=sub>\(T("Patient self-recorded log · for clinic reference (not a medical report)", "患者日常自记录整理 · 供门诊参考（非医疗报告）"))</div></div>
+          <div><h1>\(T("UricNote Life Record", "UricNote 生活记录"))</h1><div class=sub>\(T("Self-recorded daily log — share with your doctor or review yourself (not a medical report)", "自我记录的日常生活档案——就诊时给医生参考，或自己回顾（非医疗报告）"))</div></div>
           <div class=meta>\(T("Generated", "生成时间")) \(df.string(from: Date()))<br>UricNote App</div>
         </div>
         \(profileHtml)
@@ -609,6 +654,13 @@ enum ClinicReportGenerator {
         \(T("Sleep", "入睡"))：\(sleepLine)<br>
         \(T("Weight", "体重"))：\(weightLine)
         </p>
+        <h2>5. \(T("Details (last 30 days)", "细节（近 30 天）"))</h2>
+        <table><tr><th>\(T("Metric", "指标"))</th><th>\(T("Value", "数值"))</th><th>\(T("Note", "说明"))</th></tr>
+        <tr><td>\(T("Flares", "发作次数"))</td><td>\(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.count)</td><td>\(T("worst pain \(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.map(\.painPeak).max() ?? 0)/10", "最痛 \(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.map(\.painPeak).max() ?? 0)/10"))</td></tr>
+        <tr><td>\(T("Water on-goal rate", "饮水达标率"))</td><td>\(Int(Double(onTargetDays) / Double(max(recordedWater.count, 1)) * 100))%</td><td>\(T("\(onTargetDays)/\(recordedWater.count) recorded days", "实测 \(recordedWater.count) 天中达标 \(onTargetDays) 天"))</td></tr>
+        <tr><td>\(T("Body rhythm", "身体节律"))</td><td>\(store.sexualLogs.filter { $0.date >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.count)</td><td>\(T("known trigger factor", "已知诱因之一"))</td></tr>
+        <tr><td>\(T("Meds taken days", "服药天数"))</td><td>\(Set(store.medLogs.filter { $0.taken && Calendar.current.isDateInToday($0.date) == false && $0.date >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.map { Calendar.current.startOfDay(for: $0.date) }).count)</td><td>\(T("urate-lowering only; painkillers counted separately", "仅降酸药；止痛药另计"))</td></tr>
+        </table>
         <p class=note>\(T("Generated by UricNote. All data is patient self-reported (not medical-device measurements). 'Not recorded' = no entry that period, not a normal result; 'backfill' = patient confirmed later; 'auto' = filled from the patient's prior-week average. Refs: ACR 2020 Guideline · Treat-to-target (GoutSMART, Lancet Rheum 2022) · NHHC 2024.", "本记录由 UricNote App 生成，全部数据为患者日常自记录（非医疗设备测量）。「未记录」=该时段无录入，不代表指标正常；「补记」=患者事后确认；「沿用」=按患者此前一周均值自动填。参考：ACR 2020 指南 · Treat-to-target（GoutSMART, Lancet Rheumatology 2022）· 卫健委2024食养指南。"))</p>
         </body></html>
         """

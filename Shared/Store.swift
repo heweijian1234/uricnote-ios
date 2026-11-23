@@ -75,6 +75,7 @@ struct MedPlan: Identifiable, Codable {
     var dose: String
     var timesPerDay: Int
     var reminderTimes: [Date]
+    var alarmsEnabled: Bool = true    // Brother Jiang's order 11-23 ③: alarm master switch (not forced on)
     var active: Bool = true
     var startDate: Date
     var stopDate: Date?
@@ -168,9 +169,9 @@ struct PurineItem: Identifiable, Codable {
     static let enRules: [(String, String)] = [
         ("hot pot", "饮食场景"), ("bbq", "饮食场景"), ("buffet", "饮食场景"), ("banquet", "饮食场景"), ("wedding", "饮食场景"),
         ("sushi", "饮食场景"), ("japanese", "饮食场景"), ("korean", "饮食场景"), ("izakaya", "饮食场景"), ("party", "饮食场景"),
-        ("dinner", "饮食场景"), ("late night", "饮食场景"), ("cake", "饮食场景"), ("brunch", "饮食场景"),
+        ("dinner", "饮食场景"), ("late night", "饮食场景"), ("cake", "零食"), ("ceviche", "肉类"), ("brunch", "饮食场景"),
         ("water", "饮料"), ("sparkling", "饮料"), ("soda", "饮料"), ("coconut water", "饮料"), ("lemonade", "饮料"),
-        ("beer", "酒类"), ("wine", "酒类"), ("vodka", "酒类"), ("whisky", "酒类"), ("whiskey", "酒类"), ("sake", "酒类"), ("liqueur", "酒类"), ("alcohol", "酒类"),
+        ("beer", "酒类"), ("stout", "酒类"), ("ale", "酒类"), ("wine", "酒类"), ("vodka", "酒类"), ("whisky", "酒类"), ("whiskey", "酒类"), ("sake", "酒类"), ("liqueur", "酒类"), ("alcohol", "酒类"),
         ("tea", "茶叶"), ("matcha", "茶叶"), ("coffee", "咖啡"), ("espresso", "咖啡"), ("latte", "咖啡"),
         ("milk tea", "奶茶"), ("boba", "奶茶"),
         ("soup", "汤类"), ("broth", "汤类"), ("stock", "汤类"),
@@ -192,6 +193,7 @@ struct PurineItem: Identifiable, Codable {
         }
         let rules: [(String, String)] = [
             // 饮食场景优先（含复合词的食物先判场景）——健哥11-21晚令：场景扩充
+            ("酸橘汁腌鱼", "肉类"), ("腌鱼", "肉类"),   // 健哥11-23令②Ceviche→肉类
             ("火锅", "饮食场景"), ("烧烤", "饮食场景"), ("自助", "饮食场景"), ("快餐", "饮食场景"), ("宴", "饮食场景"), ("聚餐", "饮食场景"),
             ("寿司", "饮食场景"), ("日式", "饮食场景"), ("日料", "饮食场景"), ("韩式", "饮食场景"), ("韩餐", "饮食场景"),
             ("酒会", "饮食场景"), ("晚宴", "饮食场景"), ("夜宵", "饮食场景"), ("聚会", "饮食场景"), ("婚宴", "饮食场景"), ("下午茶", "饮食场景"),
@@ -202,8 +204,8 @@ struct PurineItem: Identifiable, Codable {
             ("奶茶", "奶茶"),
             ("汤", "汤类"),
             // 零食（健哥令6+10：凉皮/布丁/酸辣粉+薯片饼干糖果族）——先于面包判
-            ("凉皮", "零食"), ("酸辣粉", "零食"), ("布丁", "零食"), ("薯片", "零食"), ("薯条", "零食"), ("饼干", "零食"), ("糖果", "零食"), ("巧克力", "零食"), ("冰淇淋", "零食"), ("雪糕", "零食"), ("爆米花", "零食"), ("话梅", "零食"), ("蜜饯", "零食"), ("辣条", "零食"), ("锅巴", "零食"), ("瓜子", "零食"), ("花生", "零食"), ("坚果", "零食"), ("核桃", "零食"), ("杏仁", "坚果"), ("腰果", "坚果"), ("栗子", "零食"), ("果冻", "零食"), ("肉干", "零食"), ("肉脯", "零食"),
-            ("面包", "面包"), ("蛋糕", "饮食场景"), ("糕", "面包"),
+            ("凉皮", "零食"), ("酸辣粉", "零食"), ("布丁", "零食"), ("蛋糕", "零食"),   // 健哥11-23令②蛋糕→零食 ("薯片", "零食"), ("薯条", "零食"), ("饼干", "零食"), ("糖果", "零食"), ("巧克力", "零食"), ("冰淇淋", "零食"), ("雪糕", "零食"), ("爆米花", "零食"), ("话梅", "零食"), ("蜜饯", "零食"), ("辣条", "零食"), ("锅巴", "零食"), ("瓜子", "零食"), ("花生", "零食"), ("坚果", "零食"), ("核桃", "零食"), ("杏仁", "坚果"), ("腰果", "坚果"), ("栗子", "零食"), ("果冻", "零食"), ("肉干", "零食"), ("肉脯", "零食"),
+            ("面包", "面包"), ("糕", "面包"),   // 蛋糕→零食（健哥11-23令②）
             ("可乐", "饮料"), ("汽水", "饮料"), ("果汁", "饮料"), ("含糖", "饮料"), ("饮料", "饮料"), ("奶", "饮料"), ("酸奶", "饮料"), ("豆浆", "饮料"), ("椰奶", "饮料"), ("汁", "饮料"),
             ("鱼", "海鲜"), ("虾", "海鲜"), ("蟹", "海鲜"), ("贝", "海鲜"), ("牡蛎", "海鲜"), ("蛤", "海鲜"), ("海参", "海鲜"), ("海带", "海鲜"), ("紫菜", "海鲜"), ("鱿鱼", "海鲜"), ("章鱼", "海鲜"), ("海蜇", "海鲜"), ("鲍鱼", "海鲜"), ("扇贝", "海鲜"), ("蛏", "海鲜"), ("蚬", "海鲜"), ("生蚝", "海鲜"), ("刺身", "海鲜"), ("三文鱼", "海鲜"), ("金枪鱼", "海鲜"), ("鳕鱼", "海鲜"), ("鲈鱼", "海鲜"), ("带鱼", "海鲜"), ("沙丁鱼", "海鲜"), ("凤尾鱼", "海鲜"), ("秋刀鱼", "海鲜"),
             ("肝", "肉类"), ("腰", "肉类"), ("脑", "肉类"), ("肉", "肉类"), ("牛", "肉类"), ("猪", "肉类"), ("羊", "肉类"), ("鸡", "肉类"), ("鸭", "肉类"), ("鹅", "肉类"), ("肠", "肉类"), ("火腿", "肉类"), ("培根", "肉类"), ("腊肉", "肉类"), ("香肠", "肉类"), ("热狗", "肉类"), ("蛋", "肉类"), ("培根", "肉类"),
@@ -218,6 +220,13 @@ struct PurineItem: Identifiable, Codable {
 
 // 食物库本体（FoodItem/FoodLibrary/FoodSourceCatalog）已剥离至 Shared/FoodLibraryData.swift（v11.1 扩容）
 
+
+// MARK: - 房事频率记录（健哥11-23令⑨：痛风诱因之一——耻感设计：无图标纯文字/无统计图只有趋势）
+struct SexualActivityLog: Identifiable, Codable {
+    var id: UUID = UUID()
+    var date: Date
+    var kind: String        // "sex" / "masturbation"（只存日期+类型，无细节——隐私最小化）
+}
 // MARK: - 体重（保留时间序列）+ 健康档案 v11（A6/C11：静态"是谁"+动态"变化"分离）
 struct WeightLog: Identifiable, Codable {
     var id: UUID = UUID()
@@ -230,6 +239,7 @@ struct HealthProfile: Codable {
     var heightCm: Double?
     var weightKg: Double?
     var age: Int?
+    var birthDate: Date? = nil    // 健哥11-23令⑧：出生年月日（年龄自动算；旧age字段保留兼容）
     var gender: String?            // 男/女/其他
     var region: String?            // 地区
     var conditions: [String] = []  // 现有疾病（快捷多选：高血压/糖尿病/高血脂/肾结石/其他）
@@ -301,6 +311,7 @@ final class Store: ObservableObject {
     @Published var sleepLogs: [SleepLog] = [] { didSet { save() } }
     @Published var foodDays: [FoodDayLog] = [] { didSet { save() } }
     @Published var weightLogs: [WeightLog] = [] { didSet { save() } }
+    @Published var sexualLogs: [SexualActivityLog] = [] { didSet { save() } }   // 健哥11-23令⑨
     @Published var purineItems: [PurineItem] = [] { didSet { save() } }
     @Published var confirmedPainFreeDays: Set<Date> = [] { didSet { save() } }   // v11.1：记无痛确认日（C 方案）
     @Published var profile = HealthProfile() { didSet { save() } }
@@ -326,6 +337,7 @@ final class Store: ObservableObject {
         if let d = try? JSONEncoder().encode(sleepLogs) { defaults.set(d, forKey: "ur.sleepLogs") }
         if let d = try? JSONEncoder().encode(foodDays) { defaults.set(d, forKey: "ur.foodDays") }
         if let d = try? JSONEncoder().encode(weightLogs) { defaults.set(d, forKey: "ur.weightLogs") }
+        if let d = try? JSONEncoder().encode(sexualLogs) { defaults.set(d, forKey: "ur.sexualLogs") }
         if let d = try? JSONEncoder().encode(purineItems) { defaults.set(d, forKey: "ur.purineItems") }
         if let d = try? JSONEncoder().encode(confirmedPainFreeDays) { defaults.set(d, forKey: "ur.confirmedPainFreeDays") }
         if let d = try? JSONEncoder().encode(profile) { defaults.set(d, forKey: "ur.profile") }
@@ -347,6 +359,7 @@ final class Store: ObservableObject {
         if let d = defaults.data(forKey: "ur.sleepLogs"), let x = try? JSONDecoder().decode([SleepLog].self, from: d) { sleepLogs = x }
         if let d = defaults.data(forKey: "ur.foodDays"), let x = try? JSONDecoder().decode([FoodDayLog].self, from: d) { foodDays = x }
         if let d = defaults.data(forKey: "ur.weightLogs"), let x = try? JSONDecoder().decode([WeightLog].self, from: d) { weightLogs = x }
+        if let d = defaults.data(forKey: "ur.sexualLogs"), let x = try? JSONDecoder().decode([SexualActivityLog].self, from: d) { sexualLogs = x }
         if let d = defaults.data(forKey: "ur.purineItems"), let x = try? JSONDecoder().decode([PurineItem].self, from: d) { purineItems = x }
         if let d = defaults.data(forKey: "ur.confirmedPainFreeDays"), let x = try? JSONDecoder().decode(Set<Date>.self, from: d) { confirmedPainFreeDays = x }
         if let d = defaults.data(forKey: "ur.profile"), let x = try? JSONDecoder().decode(HealthProfile.self, from: d) { profile = x }

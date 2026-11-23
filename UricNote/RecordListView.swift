@@ -11,6 +11,10 @@ struct RecordListView: View {
         NavigationView {
             List {
                 Section(L("Body", "身体")) {
+                    // 健哥11-23令⑧：健康档案入口在记录页身体区
+                    NavigationLink { HealthProfileEditor() } label: {
+                        Label(L("Health profile", "健康档案"), systemImage: "person.text.rectangle")
+                    }
                     NavigationLink { FlarePage() } label: {
                         Label(L("Flare records", "发作记录"), systemImage: "exclamationmark.triangle.fill").foregroundColor(.danger)
                     }
@@ -30,6 +34,10 @@ struct RecordListView: View {
                     }
                     NavigationLink { SleepPage() } label: {
                         Label(L("Sleep time", "入睡时间"), systemImage: "moon.fill").foregroundColor(.brand)
+                    }
+                    // 健哥11-23令⑨：身体节律（房事/自慰频率——痛风诱因记录，隐私最小化）
+                    NavigationLink { RhythmPage() } label: {
+                        Label(L("Body rhythm (private)", "身体节律（私密）"), systemImage: "waveform.path.ecg").foregroundColor(.pink)
                     }
                 }
                 Section(L("Medication", "用药")) {
@@ -227,6 +235,31 @@ struct FlareEditorView: View {
                 .disabled(pain == 0 || joints.isEmpty)
             } footer: {
                 Text(L("Nighttime flare risk is 2.4× daytime — this entry is designed for use while in pain.", "夜间发作风险是白天 2.4 倍——这个入口按「痛醒状态也能用」设计。"))
+            }
+            // 健哥11-23令⑤：最下方显示今天已记录的历史（发作/喝水/饮食/昨晚入睡）
+            Section(L("Today's records", "今天的记录历史")) {
+                let todaysFlares = store.flares.filter { Calendar.current.isDate($0.startDate, inSameDayAs: Date()) }
+                if todaysFlares.isEmpty {
+                    Text(L("No flares logged today", "今天暂无发作记录")).font(.caption).foregroundColor(.secondary)
+                } else {
+                    ForEach(todaysFlares) { f in
+                        HStack {
+                            Text(f.joints.joined(separator: "/")).font(.caption)
+                            Spacer()
+                            Text(L("peak \(f.painPeak)/10", "峰值\(f.painPeak)/10")).font(.caption).foregroundColor(.danger)
+                        }
+                    }
+                }
+                if let w = store.waterDays.first(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
+                    HStack { Text(L("Water", "喝水")).font(.caption); Spacer(); Text("\(w.totalMl) ml").font(.caption).foregroundColor(.secondary) }
+                }
+                if let f2 = store.foodDays.first(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
+                    HStack { Text(L("Diet", "饮食")).font(.caption); Spacer(); Text(f2.noTriggerToday ? L("clean ✓", "未碰 ✓") : L("\(f2.items.count + f2.scenes.count) items", "\(f2.items.count + f2.scenes.count) 项")).font(.caption).foregroundColor(.secondary) }
+                }
+                let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+                if let s2 = store.sleepLogs.first(where: { Calendar.current.isDate($0.night, inSameDayAs: yesterday) }) {
+                    HStack { Text(L("Sleep (last night)", "入睡（昨晚）")).font(.caption); Spacer(); Text(["<23", "23-24", "0-1", ">1"][min(s2.bucket, 3)]).font(.caption).foregroundColor(.secondary) }
+                }
             }
         }
         .navigationTitle(editing == nil ? L("Log flare", "记发作") : L("Edit flare record", "改发作记录"))
@@ -496,6 +529,7 @@ struct WaterPage: View {
                                 if let i = store.waterDays.firstIndex(where: { $0.id == w.id }) {
                                     store.waterDays[i].cups = []
                                     store.waterDays[i].provenance = .recorded
+                                    store.save()   // 🔴显式落盘
                                 }
                             }
                             .font(.caption)
@@ -511,7 +545,7 @@ struct WaterPage: View {
                                 // v11.1 #11：每杯容量提前到记一杯下方（就近原则）
                                 Stepper(L("\(w.cupSizeMl) ml per cup (adjustable)", "每杯 \(w.cupSizeMl) ml（容器不一可改）"), value: Binding(
                                     get: { store.todayWater?.cupSizeMl ?? 250 },
-                                    set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v } }
+                                    set: { v in if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) { store.waterDays[i].cupSizeMl = v; store.save() } }
                                 ), in: 100...800, step: 50)
                                 .font(.caption)
                             }
@@ -595,6 +629,7 @@ struct WaterPage: View {
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
             let wasBelowGoal = store.waterDays[i].totalMl < store.waterDays[i].goalMl
             store.waterDays[i].cups.append(WaterCup(time: Date(), ml: size))
+            store.save()   // 🔴内层修改不触发didSet——显式落盘
             Haptic.tap()
             let total = store.waterDays[i].totalMl
             if wasBelowGoal && total >= store.waterDays[i].goalMl {
@@ -615,6 +650,7 @@ struct WaterPage: View {
     private func removeCup(_ c: WaterCup) {
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: Date()) }) {
             store.waterDays[i].cups.removeAll { $0.id == c.id }
+            store.save()   // 🔴显式落盘
         }
     }
 
@@ -622,9 +658,9 @@ struct WaterPage: View {
         let today = Calendar.current.startOfDay(for: Date())
         if let i = store.waterDays.firstIndex(where: { Calendar.current.isDate($0.day, inSameDayAs: today) }) {
             switch slotIndex {
-            case 0: store.waterDays[i].urine.morning = v
-            case 1: store.waterDays[i].urine.noon = v
-            default: store.waterDays[i].urine.evening = v
+            case 0: store.waterDays[i].urine.morning = v; store.save()   // 🔴显式落盘
+            case 1: store.waterDays[i].urine.noon = v; store.save()
+            default: store.waterDays[i].urine.evening = v; store.save()   // 🔴显式落盘
             }
         }
     }
@@ -765,6 +801,7 @@ struct FoodPage: View {
             store.foodDays[i].items.append(name)
             store.foodDays[i].noTriggerToday = false
         }
+        store.save()   // 🔴内层修改不触发didSet——显式落盘
     }
 
     private func addScene(_ scene: String, auto: [String]) {
@@ -779,6 +816,7 @@ struct FoodPage: View {
             store.foodDays[i].noTriggerToday = false
             UricCelebrate.show(L("Logged. One slip is fine — knowing your pattern is what matters.", "记了。偶尔一次没关系，知道规律才重要。"))
         }
+        store.save()   // 🔴显式落盘
     }
 
     private func markNoTrigger() {
@@ -786,6 +824,7 @@ struct FoodPage: View {
         store.foodDays[i].noTriggerToday = true
         store.foodDays[i].items = []
         store.foodDays[i].scenes = []
+        store.save()   // 🔴显式落盘
         UricCelebrate.show(L("Logged — this day is data too", "记了——这一天也是数据"))
     }
 }
@@ -1058,5 +1097,78 @@ struct ScenePickerSheet: View {
 
     private func levelName(_ l: String) -> String {
         l == "red" ? L("Caution", "注意") : l == "yellow" ? L("Moderate", "适量") : L("Safe to eat", "能吃")
+    }
+}
+
+
+// MARK: - 身体节律页（健哥11-23令⑨：房事/自慰频率记录——痛风诱因之一）
+// 隐私设计：只存日期+类型两字段；页名"身体节律"；无统计图（避免成为炫耀/焦虑工具，只有医疗关联价值）
+
+struct RhythmPage: View {
+    @ObservedObject var store = Store.shared
+
+    private var recent: [SexualActivityLog] {
+        store.sexualLogs.sorted { $0.date > $1.date }
+    }
+    private var last30: Int {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        return store.sexualLogs.filter { $0.date >= cutoff }.count
+    }
+
+    var body: some View {
+        List {
+            Section {
+                HStack {
+                    Button {
+                        store.sexualLogs.append(SexualActivityLog(date: Date(), kind: "sex"))
+                        store.save()
+                        UricCelebrate.show(L("Logged", "记下了"))
+                    } label: {
+                        Label(L("Log — partnered", "记一次（有伴侣）"), systemImage: "heart.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.pink)
+                    Button {
+                        store.sexualLogs.append(SexualActivityLog(date: Date(), kind: "masturbation"))
+                        store.save()
+                        UricCelebrate.show(L("Logged", "记下了"))
+                    } label: {
+                        Label(L("Log — solo", "记一次（独自）"), systemImage: "person.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.pink)
+                }
+            } footer: {
+                Text(L("Frequency is a known gout trigger factor. Only date + type is stored — nothing else. Never synced anywhere.", "频率是痛风的已知诱因之一。只存日期和类型，别无所存；永不上传。"))
+            }
+            Section(L("Last 30 days", "近 30 天")) {
+                HStack {
+                    Text(L("Total", "合计"))
+                    Spacer()
+                    Text("\(last30) " + L("times", "次")).foregroundColor(.secondary)
+                }
+            }
+            Section(L("History (swipe to delete)", "历史（左滑删除）")) {
+                if recent.isEmpty {
+                    Text(L("Nothing logged yet", "还没有记录")).font(.caption).foregroundColor(.secondary)
+                }
+                ForEach(recent) { r in
+                    HStack {
+                        Text(r.date.formatted(date: .abbreviated, time: .omitted))
+                        Spacer()
+                        Text(r.kind == "sex" ? L("partnered", "有伴侣") : L("solo", "独自"))
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                }
+                .onDelete { idx in
+                    let sorted = store.sexualLogs.sorted { $0.date > $1.date }
+                    for i in idx { if let r = sorted[safe: i] { store.sexualLogs.removeAll { $0.id == r.id } } }
+                    store.save()
+                }
+            }
+        }
+        .navigationTitle(L("Body rhythm", "身体节律"))
     }
 }
