@@ -19,11 +19,11 @@ struct DashboardView: View {
                     bigNumbers
                     painFreeConfirmRow   // v11.1 #9：记无痛（C 方案）
                     if !store.profile.isComplete { profileCard }
+                    recallAlarmCardInline   // 健哥11-25令：回顾提醒提回待办区上方（11-23 曾压到最下方）
                     todayTodos       // 待办驱动：记完的行消失
                     dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷
                     greenZoneCard    // 中低嘌呤清单查阅卡（v11.1 #2 改名）
                     quickActions     // 事件型（发作/化验/体重）
-                    recallAlarmCardInline   // 健哥11-23令⑦：回顾提醒移到最下方
                 }
                 .padding()
             }
@@ -125,9 +125,16 @@ struct DashboardView: View {
         return d <= 0 ? L("Due now", "该查了") : L("\(d)d", "\(d)天")
     }
     private var reviewFootnote: String {
-        guard let next = store.review.nextReviewDate else { return L("Auto-scheduled on first lab entry", "录化验值自动排") }
+        let weeks = store.review.intervalWeeks
+        if weeks == 0 { return L("Not tracked", "不记录") }
+        guard let next = store.review.nextReviewDate else {
+            return L("Auto-scheduled on first lab entry", "录化验值自动排")
+        }
         let df = DateFormatter(); df.dateFormat = "M/d"
-        return L("Every \(store.review.intervalWeeks) wks · next \(df.string(from: next))", "每\(store.review.intervalWeeks)周 · 下次 \(df.string(from: next))")
+        if weeks == -1 {
+            return L("Custom · next \(df.string(from: next))", "自定义 · 下次 \(df.string(from: next))")
+        }
+        return L("Every \(weeks) wks · next \(df.string(from: next))", "每\(weeks)周 · 下次 \(df.string(from: next))")
     }
 
     private var flareFootnote: String {
@@ -161,7 +168,6 @@ struct DashboardView: View {
     // 今日待办行（B1 驾驶舱核心：该记没记的显示，记完打勾消失）
     private var todayTodos: some View {
         VStack(spacing: 8) {
-            // 健哥11-23令⑦：回顾提醒移到最下方
             // ① 昨晚入睡（B2）
             if store.lastNightSleep == nil {
                 todoRow(icon: "moon.fill", color: .brand, title: L("What time did you sleep?", "昨晚几点睡的？")) {

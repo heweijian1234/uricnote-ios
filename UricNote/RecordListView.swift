@@ -402,23 +402,75 @@ struct UricTrendChart: View {
 // A5：复查间隔可调（4/6/8/12 周）
 struct ReviewIntervalEditor: View {
     @ObservedObject var store = Store.shared
+    @State private var customDate = Date()
+
+    private let presets = [4, 6, 8, 12]
+
+    /// 0 = 不记录；4/6/8/12 = 按周推算；-1 = 自定义日期
+    private var mode: Int { store.review.intervalWeeks }
 
     var body: some View {
         Form {
-            Picker(L("Recheck interval", "复查间隔"), selection: Binding(
-                get: { store.review.intervalWeeks },
-                set: { w in
-                    store.review.intervalWeeks = w
-                    if store.lastReading != nil {
-                        store.review.nextReviewDate = Calendar.current.date(byAdding: .weekOfYear, value: w, to: Date())
-                    }
+            Section {
+                choiceRow(L("Not tracked", "不记录"), 0)
+                ForEach(presets, id: \.self) { w in
+                    choiceRow(L("Every \(w) weeks", "每 \(w) 周"), w)
                 }
-            )) {
-                Text(L("4 weeks", "4 周")).tag(4); Text(L("6 weeks", "6 周")).tag(6); Text(L("8 weeks", "8 周")).tag(8); Text(L("12 weeks", "12 周")).tag(12)
+                choiceRow(L("Custom date", "自定义日期"), -1)
+            } header: {
+                Text(L("Recheck rhythm", "复查节律"))
+            } footer: {
+                Text(L("This drives the countdown on your dashboard. Choose \"Not tracked\" to hide it.", "这个设置决定仪表盘的复查倒计时。选「不记录」则不显示。"))
             }
-            .pickerStyle(.segmented)
+
+            if mode == -1 {
+                Section {
+                    DatePicker(L("Next recheck", "下次复查"),
+                               selection: $customDate,
+                               displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .onChange(of: customDate) { newValue in
+                            // 2026-11-25：自定义日期保存到下一次复查（不回填 intervalWeeks）
+                            store.review.nextReviewDate = Calendar.current.startOfDay(for: newValue)
+                            store.save()
+                        }
+                } footer: {
+                    Text(L("Pick any date — holidays, a doctor's schedule, whatever fits.", "可以选任意日期——避开节假日、跟着医生的排班，都行。"))
+                }
+            }
         }
         .navigationTitle(L("Recheck rhythm", "复查节律"))
+        .onAppear {
+            customDate = store.review.nextReviewDate
+                ?? Calendar.current.date(byAdding: .weekOfYear, value: 8, to: Date())!
+        }
+    }
+
+    private func choiceRow(_ title: String, _ value: Int) -> some View {
+        Button {
+            store.review.intervalWeeks = value
+            switch value {
+            case 0:
+                store.review.nextReviewDate = nil
+            case -1:
+                store.review.nextReviewDate = Calendar.current.startOfDay(for: customDate)
+            default:
+                // 2026-11-25：不再要求「先有化验值」——选了间隔就立刻排出下次复查，
+                // 否则仪表盘倒计时永远是「—」（健哥反馈的实际 bug）
+                store.review.nextReviewDate = Calendar.current.date(byAdding: .weekOfYear, value: value, to: Date())
+            }
+            store.save()
+        } label: {
+            HStack {
+                Text(title).foregroundColor(.primary)
+                Spacer()
+                if mode == value {
+                    Image(systemName: "checkmark").foregroundColor(.brand)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -1029,6 +1081,9 @@ struct DailyFoodPickerSheet: View {
                                 Image(systemName: "checkmark.circle.fill").foregroundColor(.brand)
                             }
                         }
+                        // 健哥11-25令：整行可点。原来只有左侧文字能点中——
+                        // Spacer 是透明的，不参与命中测试，右侧大片空白等于死区
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
