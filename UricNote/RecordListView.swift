@@ -369,9 +369,18 @@ struct UricReadingPage: View {
 // A5：趋势折线（双单位自适应；目标线 6.0/360）
 struct UricTrendChart: View {
     @ObservedObject var store = Store.shared
+    /// nil = 全部历史；传天数则只看最近 N 天（Pro 锁用）
+    var limitDays: Int? = nil
+
+    private var visibleReadings: [UricReading] {
+        let all = store.readings.sorted { $0.date < $1.date }
+        guard let days = limitDays else { return all }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
+        return all.filter { $0.date >= cutoff }
+    }
 
     var body: some View {
-        let data = store.readings.sorted { $0.date < $1.date }
+        let data = visibleReadings
         Chart {
             ForEach(data, id: \.id) { r in
                 LineMark(x: .value(L("Date", "日期"), r.date),

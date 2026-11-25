@@ -2,9 +2,13 @@ import SwiftUI
 
 @main
 struct UricNoteApp: App {
+    @StateObject private var pro = ProStore()
+
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environmentObject(pro)
+                .task { await pro.load() }
         }
     }
 }

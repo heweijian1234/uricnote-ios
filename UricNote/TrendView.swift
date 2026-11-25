@@ -5,6 +5,8 @@ import Charts
 
 struct TrendView: View {
     @ObservedObject var store = Store.shared
+    @EnvironmentObject private var pro: ProStore
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationView {
@@ -113,18 +115,31 @@ struct TrendView: View {
                 }
                 Section {
                     Button {
-                        // 健哥11-21令：门诊记录放开——前期免费获真实用户反馈（原Pro锁移除）
-                        ClinicReportGenerator.generate(store: store)
+                        // 2026-11-25：11-21「前期免费换反馈」阶段结束，按 11-23 十资产报告恢复 Pro 收费
+                        if pro.isPro {
+                            ClinicReportGenerator.generate(store: store)
+                        } else {
+                            showPaywall = true
+                        }
                     } label: {
                         HStack {
-                            Image(systemName: "doc.text.viewfinder")
+                            Image(systemName: pro.isPro ? "doc.text.viewfinder" : "lock.fill")
+                                .foregroundColor(pro.isPro ? .brand : .secondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 // A1：门诊记录（不是医生报告——发给医生的日常记录）
-                                Text(L("Life record export", "生活记录导出")).font(.body.weight(.medium))
-                                Text(L("Your complete life record — for doctor visits or self review", "完整生活记录——就诊时给医生看，或自己回顾")).font(.caption).foregroundColor(.secondary)
+                                HStack(spacing: 6) {
+                                    Text(L("Life record export", "生活记录导出")).font(.body.weight(.medium))
+                                    if !pro.isPro { ProTag() }
+                                }
+                                Text(pro.isPro
+                                     ? L("Your complete life record — for doctor visits or self review", "完整生活记录——就诊时给医生看，或自己回顾")
+                                     : L("Pro — one page your doctor can read in 15 minutes", "Pro 功能——一页纸，医生 15 分钟能看完"))
+                                    .font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "lock.open")
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
                         }
                     }
                 } footer: {
@@ -133,6 +148,7 @@ struct TrendView: View {
             }
             .navigationTitle(L("Trends", "趋势"))
         }
+        .sheet(isPresented: $showPaywall) { ProPaywallView().environmentObject(pro) }
     }
 
     private var profileLine: String {
@@ -220,6 +236,15 @@ struct TrendView: View {
 // 尿酸趋势大图（A5）
 struct UricTrendDetailView: View {
     @ObservedObject var store = Store.shared
+    @EnvironmentObject private var pro: ProStore
+    @State private var showPaywall = false
+
+    /// 免费版看不到的旧读数条数（Pro 解锁）
+    private var hiddenCount: Int {
+        guard !pro.isPro else { return 0 }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
+        return store.readings.filter { $0.date < cutoff }.count
+    }
 
     var body: some View {
         ScrollView {
@@ -234,10 +259,38 @@ struct UricTrendDetailView: View {
                         Text(store.isAtTarget == true ? L("At target ✓", "达标 ✓") : L("Target <\(store.meta.unitIsUmol ? "360" : "6.0")", "目标 <\(store.meta.unitIsUmol ? "360" : "6.0")"))
                             .foregroundColor(store.isAtTarget == true ? .green : .amber)
                     }
-                    UricTrendChart()
+                    UricTrendChart(limitDays: pro.isPro ? nil : 90)
                         .frame(height: 240)
                     Text(L("Dashed line = target. Gaps between points show your real testing rhythm — rechecks are already scheduled.", "虚线=达标线。连续点之间的间隔就是你的真实化验节奏——不用等 App 提醒，复查日已有排程。"))
                         .font(.caption).foregroundColor(.secondary)
+
+                    if hiddenCount > 0 {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 28, height: 28)
+                                    .background(Circle().fill(Color.brand))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(L("\(hiddenCount) earlier values are hidden", "还有 \(hiddenCount) 条更早的化验值未显示"))
+                                        .font(.callout.weight(.medium))
+                                        .foregroundColor(.primary)
+                                    Text(L("Free shows 90 days. Pro shows every value you have ever logged.", "免费版显示 90 天。Pro 显示你记录过的全部。"))
+                                        .font(.caption2).foregroundColor(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(14)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.cardBG))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } else {
                     Text(L("Trend chart appears after your first lab value", "记一次化验值后出现趋势图")).foregroundColor(.secondary)
                 }
@@ -245,6 +298,7 @@ struct UricTrendDetailView: View {
             .padding()
         }
         .navigationTitle(L("Uric acid trends", "尿酸趋势"))
+        .sheet(isPresented: $showPaywall) { ProPaywallView().environmentObject(pro) }
     }
 }
 
