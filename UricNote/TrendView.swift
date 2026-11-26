@@ -498,17 +498,17 @@ enum ClinicReportGenerator {
             // 硬画到一张 A4 上，超出页面的明细全部被裁掉（健哥实测"导出只有很少信息"）。
             // 改用 ClinicReportPDF：Core Graphics 手绘多页 + 尿酸折线/发作频次/饮水/入睡图
             // + 诱因排行 + 全部化验与发作明细。
-            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.pdf")
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_SelfRecord.pdf")
             try? ClinicReportPDF.make(store: store).write(to: tmp)
         case .html:
             let html = buildHTML(store: store, readings: readings, flares: flares)
-            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.html")
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_SelfRecord.html")
             try? Data(html.utf8).write(to: tmp)
         case .csv:
-            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.csv")
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_SelfRecord.csv")
             try? buildCSV(store: store, readings: readings, flares: flares).write(to: tmp, atomically: true, encoding: .utf8)
         case .txt:
-            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.txt")
+            tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_SelfRecord.txt")
             try? buildTXT(store: store, readings: readings, flares: flares).write(to: tmp, atomically: true, encoding: .utf8)
         }
         DispatchQueue.main.async {
@@ -590,7 +590,7 @@ enum ClinicReportGenerator {
     private static func buildTXT(store: Store, readings: [UricReading], flares: [Flare]) -> String {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
         let T = { (en: String, zh: String) -> String in L(en, zh) }
-        var t = "===== \(T("UricNote Life Record", "UricNote 生活记录")) =====\n"
+        var t = "===== \(T("UricNote Self-Recorded Log", "UricNote 自我记录")) =====\n"
         t += "\(T("Generated", "生成时间")): \(df.string(from: Date()))\n\n"
         t += "[\(T("PROFILE", "档案"))]\n"
         let p = store.profile
@@ -804,7 +804,7 @@ enum ClinicReportGenerator {
         .tag{display:inline-block;background:#e8f4f0;color:#0E7C66;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px}
         </style></head><body>
         <div class=header>
-          <div><h1>\(T("UricNote Life Record", "UricNote 生活记录"))</h1><div class=sub>\(T("Self-recorded daily log — share with your doctor or review yourself (not a medical report)", "自我记录的日常生活档案——就诊时给医生参考，或自己回顾（非医疗报告）"))</div></div>
+          <div><h1>\(T("UricNote Self-Recorded Log", "UricNote 自我记录"))</h1><div class=sub>\(T("Self-recorded daily log — share with your doctor or review yourself (not a medical report)", "自我记录的日常生活档案——就诊时给医生参考，或自己回顾（非医疗报告）"))</div></div>
           <div class=meta>\(T("Generated", "生成时间")) \(df.string(from: Date()))<br>UricNote App</div>
         </div>
         \(profileHtml)

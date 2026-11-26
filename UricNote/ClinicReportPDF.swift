@@ -19,7 +19,7 @@ enum ClinicReportPDF {
 
         let fmt = UIGraphicsPDFRendererFormat()
         fmt.documentInfo = [
-            kCGPDFContextTitle as String: "UricNote Clinic Record",
+            kCGPDFContextTitle as String: "UricNote Self-Recorded Log",
             kCGPDFContextCreator as String: "UricNote",
             kCGPDFContextSubject as String: "Patient self-recorded gout / uric acid log"
         ]
@@ -227,7 +227,7 @@ enum ClinicReportPDF {
             y = m
             // 窄页眉
             let f = UIFont.systemFont(ofSize: 7.5, weight: .medium)
-            draw("UricNote · Clinic Record", font: f, color: sub,
+            draw("UricNote · Self-Recorded Log", font: f, color: sub,
                  rect: CGRect(x: m, y: page.height - m - 14, width: contentW / 2, height: 10))
             let p = "\(L("Page", "第")) \(pageNo)"
             draw(p, font: f, color: sub, align: .right,
@@ -266,7 +266,7 @@ enum ClinicReportPDF {
         }
 
         func masthead(store: Store, readingCount: Int, flareCount: Int) {
-            draw(L("UricNote · Clinic Record", "UricNote · 就诊记录"),
+            draw(L("UricNote · Self-Recorded Log", "UricNote · 自我记录"),
                  font: .systemFont(ofSize: 21, weight: .bold), color: brand,
                  rect: CGRect(x: m, y: y, width: contentW - 150, height: 26))
             let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
@@ -479,9 +479,12 @@ enum ClinicReportPDF {
                       height: CGFloat, goalLine: Double?, unit: String,
                       axisTicks: [String]? = nil) {
             guard !values.isEmpty else { return }
-            need(height + 30)
+            need(height + 34)
 
-            let plot = CGRect(x: m + 6, y: y + 6, width: contentW - 12, height: height)
+            // 2026-11-27：左侧留出 26pt 刻度区并画出数值刻度。
+            // 原来 plot 从 m+6 起，左边只有 6pt，饮水图只能靠柱子高低猜毫升数。
+            let axisW: CGFloat = 26
+            let plot = CGRect(x: m + axisW, y: y + 6, width: contentW - axisW - 6, height: height)
             let maxV = max(values.max() ?? 1, goalLine ?? 0) * 1.15
             let barW = max(plot.width / CGFloat(values.count) - 1.6, 1)
 
@@ -492,6 +495,33 @@ enum ClinicReportPDF {
             UIColor(white: 0.85, alpha: 1).setStroke()
             base.lineWidth = 0.6
             base.stroke()
+
+            // 横向网格 + Y 轴数值刻度
+            if axisTicks == nil {
+                let step = maxV <= 5 ? 1.0 : niceStep(maxV / 3)
+                var v = 0.0
+                while v <= maxV + 0.001 {
+                    let gy = plot.maxY - CGFloat(v / maxV) * plot.height
+                    if v > 0 {
+                        let gp = UIBezierPath()
+                        gp.move(to: CGPoint(x: plot.minX, y: gy))
+                        gp.addLine(to: CGPoint(x: plot.maxX, y: gy))
+                        UIColor(white: 0.95, alpha: 1).setStroke()
+                        gp.lineWidth = 0.5
+                        gp.stroke()
+                    }
+                    draw(numLabel(v), font: .systemFont(ofSize: 6), color: sub, align: .right,
+                         rect: CGRect(x: m - 2, y: gy - 4, width: axisW - 2, height: 9))
+                    v += step
+                }
+            } else if let ticks = axisTicks, ticks.count == 4 {
+                let step = plot.height / 4
+                for (i, t) in ticks.enumerated() {
+                    let gy = plot.maxY - step * CGFloat(i) - step * 0.5
+                    draw(t, font: .systemFont(ofSize: 6), color: sub, align: .right,
+                         rect: CGRect(x: m - 2, y: gy - 4, width: axisW - 2, height: 9))
+                }
+            }
 
             for (i, v) in values.enumerated() {
                 let h = max(CGFloat(v / max(1, maxV)) * plot.height, v == 0 ? 1.2 : 2)
@@ -514,16 +544,8 @@ enum ClinicReportPDF {
                 p.stroke()
             }
 
-            // 刻度标签
-            if let ticks = axisTicks, ticks.count == 4 {
-                let step = plot.height / 4
-                for (i, t) in ticks.enumerated() {
-                    let gy = plot.maxY - step * CGFloat(i) - step * 0.5
-                    draw(t, font: .systemFont(ofSize: 6.2), color: sub, align: .right,
-                         rect: CGRect(x: m - 18, y: gy - 4, width: 22, height: 9))
-                }
-            } else if !labels.isEmpty {
-                // 稀疏标签：最多 6 个
+            // X 轴标签
+            if !labels.isEmpty {
                 let strideN = max(1, labels.count / 6)
                 for (i, l) in labels.enumerated() where i % strideN == 0 {
                     let x = plot.minX + CGFloat(i) * (plot.width / CGFloat(labels.count))
@@ -533,9 +555,24 @@ enum ClinicReportPDF {
             }
 
             draw(unit, font: .systemFont(ofSize: 6), color: sub, align: .right,
-                 rect: CGRect(x: plot.maxX - 60, y: plot.minY - 1, width: 60, height: 9))
+                 rect: CGRect(x: plot.maxX - 70, y: plot.minY - 1, width: 70, height: 9))
 
             y = plot.maxY + (labels.isEmpty && axisTicks == nil ? 10 : 16)
+        }
+
+        /// 刻度步长取整（1/2/5 × 10ⁿ），避免 833、1667 这种读不出来的刻度
+        private func niceStep(_ raw: Double) -> Double {
+            guard raw > 0 else { return 1 }
+            let base = pow(10, floor(log10(raw)))
+            let f = raw / base
+            let nice: Double = f <= 1 ? 1 : (f <= 2 ? 2 : (f <= 5 ? 5 : 10))
+            return nice * base
+        }
+
+        private func numLabel(_ v: Double) -> String {
+            if v == 0 { return "0" }
+            if v == v.rounded() { return String(format: "%.0f", v) }
+            return String(format: "%.1f", v)
         }
 
         // MARK: 诱因排行
