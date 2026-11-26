@@ -192,7 +192,7 @@ struct PhotosPage: View {
         }
         .sheet(isPresented: $paywall) { ProPaywallView().environmentObject(pro) }
         .sheet(item: $comparePair) { pair in
-            PhotoCompareView(photos: pair)
+            PhotoCompareView(photos: pair.photos)
         }
         .sheet(item: $fullPhoto) { e in
             PhotoCompareView(photos: [e])
@@ -386,7 +386,7 @@ struct PhotoLibPicker: UIViewControllerRepresentable {
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             parent.dismiss()
             guard let item = results.first else { parent.onPicked(nil); return }
-            item.loadObject(ofClass: UIImage.self) { obj, _ in
+            item.itemProvider.loadObject(ofClass: UIImage.self) { obj, _ in
                 DispatchQueue.main.async {
                     parent.onPicked(obj as? UIImage)
                 }

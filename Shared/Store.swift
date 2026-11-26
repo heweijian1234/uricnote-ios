@@ -245,9 +245,7 @@ struct WaterDay: Identifiable, Codable {
     }
 }
 
-extension UrineSlot {
-    init() { morning = nil; noon = nil; evening = nil }
-}
+// UrineSlot 全字段 Optional——Swift 自动合成 init()（全 nil），无需手写
 
 // MARK: - 入睡时间（v11 新增 B2/C2：只记入睡不记起床，按"哪一晚"归属）
 struct SleepLog: Identifiable, Codable {
@@ -568,7 +566,7 @@ struct AppMeta: Codable {
 // MARK: - Store
 final class Store: ObservableObject {
     static let shared = Store()
-    private let defaults = UserDefaults.standard
+    let defaults = UserDefaults.standard   // internal：PhotoCompare 的 Store extension 也在用
 
     @Published var readings: [UricReading] = [] { didSet { save() } }
     @Published var flares: [Flare] = [] { didSet { save() } }
@@ -629,7 +627,8 @@ final class Store: ObservableObject {
     }
 
     /// 2026-11-27：编码失败也打日志（save 链路全是 try?，出错了以前一个字都不留）
-    private func encodeLog<T: Encodable>(_ value: T, forKey key: String) {
+    /// internal（非 private）：PhotoCompare.swift 的 Store extension 也在用
+    func encodeLog<T: Encodable>(_ value: T, forKey key: String) {
         do {
             let d = try JSONEncoder().encode(value)
             defaults.set(d, forKey: key)
