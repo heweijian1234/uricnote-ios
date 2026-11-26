@@ -45,6 +45,28 @@ struct UricReading: Identifiable, Codable {
     var provenance: Provenance = .recorded
     var urateUnit: Double { valueMgDl * 59.48 }  // µmol/L 换算
     var atTarget: Bool { valueMgDl < 6.0 }
+
+    // 2026-11-27：provenance 是「非可选+有默认值」字段——合成 Codable 不认默认值，
+    // 旧数据缺 provenance key 时整条解码失败 → load() 的 try? 吞掉 → 数组静默清空。
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try c.decode(Date.self, forKey: .date)
+        valueMgDl = try c.decode(Double.self, forKey: .valueMgDl)
+        creatinineMgDl = try c.decodeIfPresent(Double.self, forKey: .creatinineMgDl)
+        source = try c.decode(String.self, forKey: .source)
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
+    }
+
+    // 成员构造器（手写 init(from:) 后合成版消失——RecordListView:561 / TestDataView 在用）
+    init(date: Date, valueMgDl: Double, creatinineMgDl: Double? = nil, source: String, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.date = date
+        self.valueMgDl = valueMgDl
+        self.creatinineMgDl = creatinineMgDl
+        self.source = source
+        self.provenance = provenance
+    }
 }
 
 // MARK: - 发作（v11：药问题修正 A8——removed 发作药语义，泛化 todayTookMeds + 止痛药默认收起）
@@ -66,6 +88,43 @@ struct Flare: Identifiable, Codable {
         guard let end = endDate else { return nil }
         return Calendar.current.dateComponents([.day], from: startDate, to: end).day
     }
+
+    // 2026-11-27：同 UricReading——缺 provenance/workImpact 等 key 不再整条解码失败
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        startDate = try c.decode(Date.self, forKey: .startDate)
+        endDate = try c.decodeIfPresent(Date.self, forKey: .endDate)
+        joints = try c.decodeIfPresent([String].self, forKey: .joints) ?? []
+        painPeak = try c.decodeIfPresent(Int.self, forKey: .painPeak) ?? 5
+        canWalk = try c.decodeIfPresent(Bool.self, forKey: .canWalk) ?? true
+        workImpact = try c.decodeIfPresent(Int.self, forKey: .workImpact) ?? 0
+        workImpactNote = try c.decodeIfPresent(String.self, forKey: .workImpactNote)
+        tookMedsToday = try c.decodeIfPresent(Bool.self, forKey: .tookMedsToday)
+        tookPainkiller = try c.decodeIfPresent(Bool.self, forKey: .tookPainkiller)
+        painkillerName = try c.decodeIfPresent(String.self, forKey: .painkillerName)
+        triggerNotes = try c.decodeIfPresent(String.self, forKey: .triggerNotes)
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
+    }
+
+    // 成员构造器（TestDataView:153/230 / RecordListView:307 在用）
+    init(startDate: Date, endDate: Date?, joints: [String], painPeak: Int, canWalk: Bool,
+         workImpact: Int, workImpactNote: String?, tookMedsToday: Bool?, tookPainkiller: Bool?,
+         painkillerName: String?, triggerNotes: String?, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.startDate = startDate
+        self.endDate = endDate
+        self.joints = joints
+        self.painPeak = painPeak
+        self.canWalk = canWalk
+        self.workImpact = workImpact
+        self.workImpactNote = workImpactNote
+        self.tookMedsToday = tookMedsToday
+        self.tookPainkiller = tookPainkiller
+        self.painkillerName = painkillerName
+        self.triggerNotes = triggerNotes
+        self.provenance = provenance
+    }
 }
 
 // MARK: - 服药（v11：打卡可撤销 D6/A4——MedLog 加 id 已有，删除走 UI 层）
@@ -79,6 +138,34 @@ struct MedPlan: Identifiable, Codable {
     var active: Bool = true
     var startDate: Date
     var stopDate: Date?
+
+    // 2026-11-27：缺 alarmsEnabled/active 等 key 走默认值，不再整条解码失败
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        dose = try c.decodeIfPresent(String.self, forKey: .dose) ?? ""
+        timesPerDay = try c.decodeIfPresent(Int.self, forKey: .timesPerDay) ?? 1
+        reminderTimes = try c.decodeIfPresent([Date].self, forKey: .reminderTimes) ?? []
+        alarmsEnabled = try c.decodeIfPresent(Bool.self, forKey: .alarmsEnabled) ?? true
+        active = try c.decodeIfPresent(Bool.self, forKey: .active) ?? true
+        startDate = try c.decode(Date.self, forKey: .startDate)
+        stopDate = try c.decodeIfPresent(Date.self, forKey: .stopDate)
+    }
+
+    // 成员构造器（MedTodayView:243 在用）
+    init(name: String, dose: String, timesPerDay: Int, reminderTimes: [Date],
+         alarmsEnabled: Bool = true, active: Bool = true, startDate: Date, stopDate: Date? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.dose = dose
+        self.timesPerDay = timesPerDay
+        self.reminderTimes = reminderTimes
+        self.alarmsEnabled = alarmsEnabled
+        self.active = active
+        self.startDate = startDate
+        self.stopDate = stopDate
+    }
 }
 
 struct MedLog: Identifiable, Codable {
@@ -96,6 +183,17 @@ struct MedLog: Identifiable, Codable {
         self.taken = taken
         self.slot = slot
         self.provenance = provenance
+    }
+
+    // 2026-11-27：provenance 非可选带默认值——缺 key 走默认值，不再整条解码失败
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try c.decode(Date.self, forKey: .date)
+        planRef = try c.decode(UUID.self, forKey: .planRef)
+        taken = try c.decodeIfPresent(Bool.self, forKey: .taken) ?? true
+        slot = try c.decodeIfPresent(Int.self, forKey: .slot)
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
     }
 }
 
@@ -121,6 +219,34 @@ struct WaterDay: Identifiable, Codable {
     var provenance: Provenance = .recorded   // estimated=整日沿用均值
     var goalMl: Int = 2000
     var totalMl: Int { cups.reduce(0) { $0 + $1.ml } }
+
+    // 2026-11-27：缺 provenance/goalMl key 走默认值，不再整条解码失败
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        day = try c.decode(Date.self, forKey: .day)
+        cups = try c.decodeIfPresent([WaterCup].self, forKey: .cups) ?? []
+        cupSizeMl = try c.decodeIfPresent(Int.self, forKey: .cupSizeMl) ?? 250
+        urine = try c.decodeIfPresent(UrineSlot.self, forKey: .urine) ?? UrineSlot()
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
+        goalMl = try c.decodeIfPresent(Int.self, forKey: .goalMl) ?? 2000
+    }
+
+    // 成员构造器（Store 内迁移/rollWaterDay + TestDataView:191 在用）
+    init(day: Date, cups: [WaterCup], cupSizeMl: Int, urine: UrineSlot,
+         provenance: Provenance = .recorded, goalMl: Int = 2000) {
+        self.id = UUID()
+        self.day = day
+        self.cups = cups
+        self.cupSizeMl = cupSizeMl
+        self.urine = urine
+        self.provenance = provenance
+        self.goalMl = goalMl
+    }
+}
+
+extension UrineSlot {
+    init() { morning = nil; noon = nil; evening = nil }
 }
 
 // MARK: - 入睡时间（v11 新增 B2/C2：只记入睡不记起床，按"哪一晚"归属）
@@ -131,6 +257,22 @@ struct SleepLog: Identifiable, Codable {
     var provenance: Provenance = .recorded
     var bucketText: String {
         switch bucket { case 0: return L("before 11 PM", "23点前"); case 1: return L("11 PM-12 AM", "23-24点"); case 2: return L("12-1 AM", "0-1点"); default: return L("after 1 AM", "1点后") }
+    }
+
+    // 2026-11-27：缺 provenance key 走默认值
+    init(night: Date, bucket: Int, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.night = night
+        self.bucket = bucket
+        self.provenance = provenance
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        night = try c.decode(Date.self, forKey: .night)
+        bucket = try c.decodeIfPresent(Int.self, forKey: .bucket) ?? 1
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
     }
 }
 
@@ -143,6 +285,28 @@ struct FoodDayLog: Identifiable, Codable {
     var noTriggerToday: Bool       // 负面记录：今天没吃高嘌呤（防诱因排行虚高）
     var customNote: String?        // 自定义输入
     var provenance: Provenance = .recorded
+
+    // 2026-11-27：缺 provenance/noTriggerToday key 走默认值
+    init(day: Date, items: [String], scenes: [String], noTriggerToday: Bool, customNote: String? = nil, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.day = day
+        self.items = items
+        self.scenes = scenes
+        self.noTriggerToday = noTriggerToday
+        self.customNote = customNote
+        self.provenance = provenance
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        day = try c.decode(Date.self, forKey: .day)
+        items = try c.decodeIfPresent([String].self, forKey: .items) ?? []
+        scenes = try c.decodeIfPresent([String].self, forKey: .scenes) ?? []
+        noTriggerToday = try c.decodeIfPresent(Bool.self, forKey: .noTriggerToday) ?? false
+        customNote = try c.decodeIfPresent(String.self, forKey: .customNote)
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
+    }
 }
 
 // MARK: - 嘌呤食物库条目（v11 保留：LearnView 嘌呤库页仍用——174 条种子数据有效）
@@ -233,6 +397,23 @@ struct WeightLog: Identifiable, Codable {
     var date: Date
     var kg: Double
     var provenance: Provenance = .recorded
+
+    // 2026-11-27：缺 provenance key 走默认值
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try c.decode(Date.self, forKey: .date)
+        kg = try c.decode(Double.self, forKey: .kg)
+        provenance = try c.decodeIfPresent(Provenance.self, forKey: .provenance) ?? .recorded
+    }
+
+    // 成员构造器（RecordListView:553/1001 / TestDataView:162/247 在用）
+    init(date: Date, kg: Double, provenance: Provenance = .recorded) {
+        self.id = UUID()
+        self.date = date
+        self.kg = kg
+        self.provenance = provenance
+    }
 }
 
 struct HealthProfile: Codable {
@@ -295,6 +476,18 @@ struct Seed: Identifiable, Codable {
     var unlockedSecond: Bool = false
     var realStreak: Int = 0
     var graduated: Bool = false    // B5/C9：连续14天毕业庆祝后自动隐退（脚手架使命完成）
+
+    // 2026-11-27：缺 unlockedSecond/realStreak/graduated key 走默认值
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        type = try c.decode(String.self, forKey: .type)
+        anchorMoment = try c.decodeIfPresent(String.self, forKey: .anchorMoment) ?? ""
+        startDate = try c.decode(Date.self, forKey: .startDate)
+        unlockedSecond = try c.decodeIfPresent(Bool.self, forKey: .unlockedSecond) ?? false
+        realStreak = try c.decodeIfPresent(Int.self, forKey: .realStreak) ?? 0
+        graduated = try c.decodeIfPresent(Bool.self, forKey: .graduated) ?? false
+    }
 }
 
 // MARK: - 复查节律（v11 A5：间隔可调+推算过程显示）
@@ -395,57 +588,91 @@ final class Store: ObservableObject {
     @Published var meta = AppMeta() { didSet { save() } }
 
     private init() {
-        load()
+        isLoading = true   // 2026-11-27：装载期间 didSet→save() 一律跳过——装载到一半的内存默认值
+        load()             // 不许覆盖磁盘（这是「档案清空」最危险的覆盖窗口）
         restoreFromBackupIfEmpty()   // 2026-11-27：UserDefaults 被清但 Documents 还有备份 → 回灌
         migrateV10IfNeeded()
         rollWaterDayIfNeeded()   // A2：过凌晨自动归档重置（打开时惰性执行）
         askWaterAutoFillIfNeeded()
+        isLoading = false
+        save()   // 装载+迁移全部完成后统一落盘一次
     }
+
+    /// 2026-11-27：init 装载期间的写盘闸门。load() 逐 key 给 @Published 赋值会触发 didSet→save()，
+    /// 此时后面的 key 还是内存默认值（空数组/空档案）——把磁盘上尚未 load 到的数据全量覆盖掉。
+    /// 这是比「解码失败」更隐蔽的一层：就算解码全对，装载中途的 save 也是在写半套数据。
+    private var isLoading = false
 
     // ---- 持久化（didSet 自动存；外部手动调用兼容——meta 子字段改动不走 didSet） ----
     func save() {
-        if let d = try? JSONEncoder().encode(readings) { defaults.set(d, forKey: "ur.readings") }
-        if let d = try? JSONEncoder().encode(flares) { defaults.set(d, forKey: "ur.flares") }
-        if let d = try? JSONEncoder().encode(medPlans) { defaults.set(d, forKey: "ur.medPlans") }
-        if let d = try? JSONEncoder().encode(medLogs) { defaults.set(d, forKey: "ur.medLogs") }
-        if let d = try? JSONEncoder().encode(waterDays) { defaults.set(d, forKey: "ur.waterDays") }
-        if let d = try? JSONEncoder().encode(sleepLogs) { defaults.set(d, forKey: "ur.sleepLogs") }
-        if let d = try? JSONEncoder().encode(foodDays) { defaults.set(d, forKey: "ur.foodDays") }
-        if let d = try? JSONEncoder().encode(weightLogs) { defaults.set(d, forKey: "ur.weightLogs") }
-        if let d = try? JSONEncoder().encode(sexualLogs) { defaults.set(d, forKey: "ur.sexualLogs") }
-        if let d = try? JSONEncoder().encode(purineItems) { defaults.set(d, forKey: "ur.purineItems") }
-        if let d = try? JSONEncoder().encode(confirmedPainFreeDays) { defaults.set(d, forKey: "ur.confirmedPainFreeDays") }
-        if let d = try? JSONEncoder().encode(profile) { defaults.set(d, forKey: "ur.profile") }
-        if let d = try? JSONEncoder().encode(seed) { defaults.set(d, forKey: "ur.seed") }
-        if let d = try? JSONEncoder().encode(review) { defaults.set(d, forKey: "ur.review") }
-        if let d = try? JSONEncoder().encode(recall) { defaults.set(d, forKey: "ur.recall") }
-        if let d = try? JSONEncoder().encode(meta) { defaults.set(d, forKey: "ur.meta") }
+        guard !isLoading else { return }   // 装载期禁止半套数据落盘
+
+    // ---- 持久化（didSet 自动存；外部手动调用兼容——meta 子字段改动不走 didSet） ----
+    func save() {
+        encodeLog(readings, forKey: "ur.readings")
+        encodeLog(flares, forKey: "ur.flares")
+        encodeLog(medPlans, forKey: "ur.medPlans")
+        encodeLog(medLogs, forKey: "ur.medLogs")
+        encodeLog(waterDays, forKey: "ur.waterDays")
+        encodeLog(sleepLogs, forKey: "ur.sleepLogs")
+        encodeLog(foodDays, forKey: "ur.foodDays")
+        encodeLog(weightLogs, forKey: "ur.weightLogs")
+        encodeLog(sexualLogs, forKey: "ur.sexualLogs")
+        encodeLog(purineItems, forKey: "ur.purineItems")
+        encodeLog(confirmedPainFreeDays, forKey: "ur.confirmedPainFreeDays")
+        encodeLog(profile, forKey: "ur.profile")
+        encodeLog(seed, forKey: "ur.seed")
+        encodeLog(review, forKey: "ur.review")
+        encodeLog(recall, forKey: "ur.recall")
+        encodeLog(meta, forKey: "ur.meta")
         // 健哥11-21令：日常食物表+自定义场景（跟meta一起走meta key？不——独立key防单块坏连坐）
         if let d = try? JSONEncoder().encode(meta.dailyFoods) { defaults.set(d, forKey: "ur.dailyFoods") }
         if let d = try? JSONEncoder().encode(meta.customScenes) { defaults.set(d, forKey: "ur.customScenes") }
         saveBackup()   // 2026-11-27：同步落一份到 Documents，防容器被清
     }
 
+    /// 2026-11-27：编码失败也打日志（save 链路全是 try?，出错了以前一个字都不留）
+    private func encodeLog<T: Encodable>(_ value: T, forKey key: String) {
+        do {
+            let d = try JSONEncoder().encode(value)
+            defaults.set(d, forKey: key)
+        } catch {
+            NSLog("🔴 UricNote save FAILED \(key): \(error.localizedDescription)")
+        }
+    }
+    }
+
     private func load() {
-        if let d = defaults.data(forKey: "ur.readings"), let x = try? JSONDecoder().decode([UricReading].self, from: d) { readings = x }
-        if let d = defaults.data(forKey: "ur.flares"), let x = try? JSONDecoder().decode([Flare].self, from: d) { flares = x }
-        if let d = defaults.data(forKey: "ur.medPlans"), let x = try? JSONDecoder().decode([MedPlan].self, from: d) { medPlans = x }
-        if let d = defaults.data(forKey: "ur.medLogs"), let x = try? JSONDecoder().decode([MedLog].self, from: d) { medLogs = x }
-        if let d = defaults.data(forKey: "ur.waterDays"), let x = try? JSONDecoder().decode([WaterDay].self, from: d) { waterDays = x }
-        if let d = defaults.data(forKey: "ur.sleepLogs"), let x = try? JSONDecoder().decode([SleepLog].self, from: d) { sleepLogs = x }
-        if let d = defaults.data(forKey: "ur.foodDays"), let x = try? JSONDecoder().decode([FoodDayLog].self, from: d) { foodDays = x }
-        if let d = defaults.data(forKey: "ur.weightLogs"), let x = try? JSONDecoder().decode([WeightLog].self, from: d) { weightLogs = x }
-        if let d = defaults.data(forKey: "ur.sexualLogs"), let x = try? JSONDecoder().decode([SexualActivityLog].self, from: d) { sexualLogs = x }
-        if let d = defaults.data(forKey: "ur.purineItems"), let x = try? JSONDecoder().decode([PurineItem].self, from: d) { purineItems = x }
-        if let d = defaults.data(forKey: "ur.confirmedPainFreeDays"), let x = try? JSONDecoder().decode(Set<Date>.self, from: d) { confirmedPainFreeDays = x }
-        if let d = defaults.data(forKey: "ur.profile"), let x = try? JSONDecoder().decode(HealthProfile.self, from: d) { profile = x }
-        if let d = defaults.data(forKey: "ur.seed"), let x = try? JSONDecoder().decode(Seed.self, from: d) { seed = x }
-        if let d = defaults.data(forKey: "ur.review"), let x = try? JSONDecoder().decode(ReviewSchedule.self, from: d) { review = x }
-        if let d = defaults.data(forKey: "ur.recall"), let x = try? JSONDecoder().decode(RecallAlarm.self, from: d) { recall = x }
-        if let d = defaults.data(forKey: "ur.meta"), let x = try? JSONDecoder().decode(AppMeta.self, from: d) { meta = x }
+        // 2026-11-27：解码失败不再静默——按存档教训「try? 包住 load 错误被吞，问题只表现为数据没了」，
+        // 每个关键 key 解码失败都打日志（Console.app 可查），配合 TestFlight 反馈能定位根因。
+        func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
+            guard let d = defaults.data(forKey: key) else { return nil }
+            do {
+                return try JSONDecoder().decode(type, from: d)
+            } catch {
+                NSLog("🔴 UricNote load FAILED \(key): \(error.localizedDescription)")
+                return nil
+            }
+        }
+        if let x = decode([UricReading].self, key: "ur.readings") { readings = x }
+        if let x = decode([Flare].self, key: "ur.flares") { flares = x }
+        if let x = decode([MedPlan].self, key: "ur.medPlans") { medPlans = x }
+        if let x = decode([MedLog].self, key: "ur.medLogs") { medLogs = x }
+        if let x = decode([WaterDay].self, key: "ur.waterDays") { waterDays = x }
+        if let x = decode([SleepLog].self, key: "ur.sleepLogs") { sleepLogs = x }
+        if let x = decode([FoodDayLog].self, key: "ur.foodDays") { foodDays = x }
+        if let x = decode([WeightLog].self, key: "ur.weightLogs") { weightLogs = x }
+        if let x = decode([SexualActivityLog].self, key: "ur.sexualLogs") { sexualLogs = x }
+        if let x = decode([PurineItem].self, key: "ur.purineItems") { purineItems = x }
+        if let x = decode(Set<Date>.self, key: "ur.confirmedPainFreeDays") { confirmedPainFreeDays = x }
+        if let x = decode(HealthProfile.self, key: "ur.profile") { profile = x }
+        if let x = decode(Seed.self, key: "ur.seed") { seed = x }
+        if let x = decode(ReviewSchedule.self, key: "ur.review") { review = x }
+        if let x = decode(RecallAlarm.self, key: "ur.recall") { recall = x }
+        if let x = decode(AppMeta.self, key: "ur.meta") { meta = x }
         // 健哥11-21令：日常食物表+自定义场景独立key读取（旧数据缺key=空表，零破坏）
-        if let d = defaults.data(forKey: "ur.dailyFoods"), let x = try? JSONDecoder().decode([String].self, from: d) { meta.dailyFoods = x }
-        if let d = defaults.data(forKey: "ur.customScenes"), let x = try? JSONDecoder().decode([String].self, from: d) { meta.customScenes = x }
+        if let x = decode([String].self, key: "ur.dailyFoods") { meta.dailyFoods = x }
+        if let x = decode([String].self, key: "ur.customScenes") { meta.customScenes = x }
     }
 
     // ---- v10→v11 迁移：旧 waterLogs（按日杯数）→ 新 waterDays（杯明细） ----
@@ -562,6 +789,48 @@ final class Store: ObservableObject {
         var review = ReviewSchedule()
         var recall = RecallAlarm()
         var meta = AppMeta()
+
+        // 2026-11-27：备份文件是跨版本读的——老版本备份缺新字段 key（如 sexualLogs）时，
+        // 合成解码会整块失败 → 回灌静默不发生。全字段 decodeIfPresent 缺 key 走默认值。
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            savedAt = try c.decodeIfPresent(Date.self, forKey: .savedAt) ?? Date()
+            readings = try c.decodeIfPresent([UricReading].self, forKey: .readings) ?? []
+            flares = try c.decodeIfPresent([Flare].self, forKey: .flares) ?? []
+            medPlans = try c.decodeIfPresent([MedPlan].self, forKey: .medPlans) ?? []
+            medLogs = try c.decodeIfPresent([MedLog].self, forKey: .medLogs) ?? []
+            waterDays = try c.decodeIfPresent([WaterDay].self, forKey: .waterDays) ?? []
+            sleepLogs = try c.decodeIfPresent([SleepLog].self, forKey: .sleepLogs) ?? []
+            foodDays = try c.decodeIfPresent([FoodDayLog].self, forKey: .foodDays) ?? []
+            weightLogs = try c.decodeIfPresent([WeightLog].self, forKey: .weightLogs) ?? []
+            sexualLogs = try c.decodeIfPresent([SexualActivityLog].self, forKey: .sexualLogs) ?? []
+            confirmedPainFreeDays = try c.decodeIfPresent(Set<Date>.self, forKey: .confirmedPainFreeDays) ?? []
+            profile = try c.decodeIfPresent(HealthProfile.self, forKey: .profile) ?? HealthProfile()
+            review = try c.decodeIfPresent(ReviewSchedule.self, forKey: .review) ?? ReviewSchedule()
+            recall = try c.decodeIfPresent(RecallAlarm.self, forKey: .recall) ?? RecallAlarm()
+            meta = try c.decodeIfPresent(AppMeta.self, forKey: .meta) ?? AppMeta()
+        }
+
+        init(savedAt: Date, readings: [UricReading], flares: [Flare], medPlans: [MedPlan],
+             medLogs: [MedLog], waterDays: [WaterDay], sleepLogs: [SleepLog], foodDays: [FoodDayLog],
+             weightLogs: [WeightLog], sexualLogs: [SexualActivityLog], confirmedPainFreeDays: Set<Date>,
+             profile: HealthProfile, review: ReviewSchedule, recall: RecallAlarm, meta: AppMeta) {
+            self.savedAt = savedAt
+            self.readings = readings
+            self.flares = flares
+            self.medPlans = medPlans
+            self.medLogs = medLogs
+            self.waterDays = waterDays
+            self.sleepLogs = sleepLogs
+            self.foodDays = foodDays
+            self.weightLogs = weightLogs
+            self.sexualLogs = sexualLogs
+            self.confirmedPainFreeDays = confirmedPainFreeDays
+            self.profile = profile
+            self.review = review
+            self.recall = recall
+            self.meta = meta
+        }
     }
 
     private func saveBackup() {

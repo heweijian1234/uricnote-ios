@@ -28,7 +28,9 @@ struct TrendView: View {
                         }
                         .padding(.top, 2)
 
-                        Chart(store.sleepLogs.suffix(90)) { s2 in
+                        // 2026-11-27：数组是写入顺序（测试数据从今天往回生成），不排序的话
+                        // suffix(90) 取到的是最老的 90 天——近期记录全被切掉（健哥实测反馈）
+                        Chart(store.sleepLogs.sorted { $0.night < $1.night }.suffix(90)) { s2 in
                             PointMark(
                                 x: .value("Night", s2.night, unit: .day),
                                 y: .value("bucket", s2.bucket)
@@ -54,7 +56,8 @@ struct TrendView: View {
                         }
                         .padding(.top, 2)
 
-                        Chart(store.waterDays.suffix(90)) { w in
+                        // 同上：必须先按日期排序再 suffix，否则近期数据被切掉
+                        Chart(store.waterDays.sorted { $0.day < $1.day }.suffix(90)) { w in
                             BarMark(
                                 x: .value("Day", w.day, unit: .day),
                                 y: .value("ml", w.totalMl)
@@ -190,7 +193,7 @@ struct TrendView: View {
     }
 
     private var sleepAvgText: String {
-        let recent = store.sleepLogs.suffix(14)
+        let recent = store.sleepLogs.sorted { $0.night < $1.night }.suffix(14)
         guard !recent.isEmpty else { return "—" }
         let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
         let idx = Int(avg.rounded())
@@ -238,11 +241,14 @@ struct TrendView: View {
     }
 
     // v11.1：热力格数据聚合（吃药/喝水/饮食/入睡四类按日计数→0-3 档）
+    // 2026-11-27：计数封顶 3。原实现同一类在一天里多次发生（药物一天 N 次打卡）就往上加，
+    // 一天记满四类能算出 4+，而 HeatGrid/图例只认 0-3——越坚持格子越消失（健哥实测反馈）。
     private var heatLevels: [Date: Int] {
         var levels: [Date: Int] = [:]
         func bump(_ d: Date) {
             let day = Calendar.current.startOfDay(for: d)
-            levels[day, default: 0] += 1
+            let cur = levels[day] ?? 0
+            if cur < 3 { levels[day] = cur + 1 }
         }
         for l in store.medLogs where l.taken { bump(l.date) }
         for w in store.waterDays where w.provenance == .recorded && !w.cups.isEmpty { bump(w.day) }
@@ -414,7 +420,7 @@ struct ChangeView: View {
                     changeRow(L("Weight", "体重"), current: String(format: "%.1f kg", last), prior: String(format: L("At start: %.1f kg", "记录开始时：%.1f kg"), first))
                 }
                 if store.sleepLogs.count >= 4 {
-                    let recent = store.sleepLogs.suffix(14)
+                    let recent = store.sleepLogs.sorted { $0.night < $1.night }.suffix(14)
                     let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
                     let idx = Int(avg.rounded())
                     changeRow(L("Sleep (last 14 days)", "入睡（近 14 天）"), current: [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(idx, 3)], prior: L("\(store.sleepLogs.count) nights logged", "共 \(store.sleepLogs.count) 晚记录"))
@@ -770,7 +776,7 @@ enum ClinicReportGenerator {
         } else { weightLine = L("Not recorded", "未记录") }
         let sleepLine: String
         if store.sleepLogs.count >= 4 {
-            let recent = store.sleepLogs.suffix(14)
+            let recent = store.sleepLogs.sorted { $0.night < $1.night }.suffix(14)
             let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
             sleepLine = [L("before 11 PM", "23点前"), L("11 PM–12 AM", "23-24点"), L("12–1 AM", "0-1点"), L("after 1 AM", "1点后")][min(Int(avg.rounded()), 3)] + L("(14-day avg, \(store.sleepLogs.count) nights)", "（近14天平均，共\(store.sleepLogs.count)晚记录）")
         } else { sleepLine = L("Not recorded", "未记录") }

@@ -70,7 +70,9 @@ enum ClinicReportPDF {
             }
 
             // ── 5. 饮水 / 入睡（近 30 天） ──
-            let water30 = Array(store.waterDays.filter { $0.provenance == .recorded }.suffix(30))
+            // 2026-11-27：饮水图此前没排序——数组是写入顺序，suffix(30) 取到最老的 30 天
+            //（测试数据从今天往回生成时尤其明显），近期饮水记录全部缺席（健哥实测反馈）
+            let water30 = Array(store.waterDays.filter { $0.provenance == .recorded }.sorted { $0.day < $1.day }.suffix(30))
             if water30.count >= 3 {
                 d.sectionTitle(5, L("Daily water (last 30 recorded days)", "每日饮水（近 30 个记录日）"))
                 let goal = Double(water30.first?.goalMl ?? 2000)
@@ -704,7 +706,7 @@ enum ClinicReportPDF {
 
             let sleepLine: String
             if store.sleepLogs.count >= 4 {
-                let recent = store.sleepLogs.suffix(14)
+                let recent = store.sleepLogs.sorted { $0.night < $1.night }.suffix(14)
                 let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
                 let idx = min(Int(avg.rounded()), 3)
                 sleepLine = [L("before 23:00", "23点前"), L("23:00–24:00", "23-24点"),

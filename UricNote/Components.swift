@@ -76,7 +76,7 @@ struct HeatGrid: View {
         switch level {
         case 1: return Color.brand.opacity(0.35)
         case 2: return Color.brand.opacity(0.65)
-        case 3: return Color.brand
+        case 3...: return Color.brand   // 2026-11-27：≥3 都按记满处理（数据源4类、图例3档，历史上 4+ 被画成白格）
         default: return Color.cardBG
         }
     }

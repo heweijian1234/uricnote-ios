@@ -909,7 +909,7 @@ struct SleepPage: View {
     @ObservedObject var store = Store.shared
 
     private var avgBucket: String {
-        let recent = store.sleepLogs.suffix(14)
+        let recent = store.sleepLogs.sorted { $0.night < $1.night }.suffix(14)
         guard !recent.isEmpty else { return "—" }
         let avg = Double(recent.map { $0.bucket }.reduce(0, +)) / Double(recent.count)
         let idx = Int(avg.rounded())
