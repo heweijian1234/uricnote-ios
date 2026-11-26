@@ -18,8 +18,9 @@ final class ProStore: ObservableObject {
     @Published var message: String?
 
     /// 商店没返回价格时的兜底显示（仅文案，不参与计价）
+    /// 真实售价以 App Store Connect 为准；这里只是断网/商品未就绪时的占位
     var priceText: String {
-        product?.displayPrice ?? "$14.99"
+        product?.displayPrice ?? "$19.99"
     }
 
     func load() async {
