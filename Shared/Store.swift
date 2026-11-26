@@ -606,9 +606,6 @@ final class Store: ObservableObject {
     // ---- 持久化（didSet 自动存；外部手动调用兼容——meta 子字段改动不走 didSet） ----
     func save() {
         guard !isLoading else { return }   // 装载期禁止半套数据落盘
-
-    // ---- 持久化（didSet 自动存；外部手动调用兼容——meta 子字段改动不走 didSet） ----
-    func save() {
         encodeLog(readings, forKey: "ur.readings")
         encodeLog(flares, forKey: "ur.flares")
         encodeLog(medPlans, forKey: "ur.medPlans")
@@ -639,7 +636,6 @@ final class Store: ObservableObject {
         } catch {
             NSLog("🔴 UricNote save FAILED \(key): \(error.localizedDescription)")
         }
-    }
     }
 
     private func load() {
