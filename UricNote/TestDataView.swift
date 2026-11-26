@@ -23,6 +23,7 @@ struct TestDataView: View {
     @ObservedObject var store = Store.shared
     @EnvironmentObject private var pro: ProStore
     @State private var toast: String?
+    @State private var confirmClear = false
 
     private let cal = Calendar.current
 
@@ -38,9 +39,27 @@ struct TestDataView: View {
         return dates.map { cal.startOfDay(for: $0) }.min()
     }
 
+    /// 已有数据里最晚的一天（2026-11-27：往回铺的数据最新只到第一次生成那天，
+    /// 中间到今天是空窗——趋势图/热力格如实显示空白，健哥实测反馈"近期不显示"的真根因）
+    private var latestDay: Date? {
+        var dates: [Date] = []
+        dates += store.waterDays.map(\.day)
+        dates += store.sleepLogs.map(\.night)
+        dates += store.foodDays.map(\.day)
+        return dates.map { cal.startOfDay(for: $0) }.max()
+    }
+
     private var nextDay: Date {
         guard let e = earliestDay else { return cal.startOfDay(for: Date()) }
         return cal.date(byAdding: .day, value: -1, to: e) ?? e
+    }
+
+    /// 补到今天：从最晚记录日的下一天开始往后铺，铺到今天为止
+    private var daysToToday: Int {
+        guard let l = latestDay else { return 0 }
+        let today = cal.startOfDay(for: Date())
+        guard l < today else { return 0 }
+        return cal.dateComponents([.day], from: l, to: today).day ?? 0
     }
 
     private var totalEntries: Int {
@@ -62,11 +81,19 @@ struct TestDataView: View {
                     Text(nextDay.formatted(.dateTime.month().day()))
                         .foregroundColor(.secondary)
                 }
+                // 2026-11-27：往回铺的最新只到第一次生成那天，中间到今天是空窗——
+                // 趋势图/热力格"近期不显示"的真根因。这个按钮把空窗补满。
+                HStack {
+                    Text(L("Latest data day", "最新数据日"))
+                    Spacer()
+                    Text((latestDay?.formatted(.dateTime.month().day())) ?? L("none", "无"))
+                        .foregroundColor(daysToToday > 0 ? .warn : .secondary)
+                }
             } header: {
                 Text(L("Test data", "测试数据"))
             } footer: {
-                Text(L("Each tap fills one whole day with plausible data and moves the date back one day. These are sample records, not real ones — turn this off before release.",
-                       "每点一次生成一整天的合理数据，日期往前推一天。这些是示例记录，不是真实数据——上架前关掉这个入口。"))
+                Text(L("Each tap fills one whole day and moves the date back. \"Fill to today\" closes the gap between your oldest data and today — charts and the heat grid only show days that have data.",
+                       "每点一次生成一整天的合理数据，日期往前推一天。「补到今天」把最早数据到今天之间的空窗填满——图表和热力格只显示有数据的日子。"))
             }
 
             // 2026-11-27：分类型计数——健哥反馈"只看到喝水入睡尿酸变了"，
@@ -118,13 +145,40 @@ struct TestDataView: View {
                 } label: {
                     Label(L("Add seven days", "加 7 天"), systemImage: "plus.circle.fill")
                 }
+                // 2026-11-27 健哥令：一键把"最早数据→今天"的空窗补满（趋势图/热力格立刻见效）
+                Button {
+                    let n = daysToToday
+                    guard n > 0 else {
+                        toast = L("Already up to today.", "已经铺到今天了。")
+                        return
+                    }
+                    generateForward(days: n)
+                } label: {
+                    Label(daysToToday > 0
+                          ? L("Fill to today (\(daysToToday)d)", "补到今天（\(daysToToday) 天）")
+                          : L("Fill to today", "补到今天"),
+                          systemImage: "arrow.right.to.line")
+                        .foregroundColor(.brand)
+                }
             }
 
+            // 2026-11-27 健哥令：反复测试用——一键清掉记录数据重新铺。
+            // 保留：健康档案/用药方案/食物库/动机（这些不是"记录"）。
             Section {
-                Text(L("Want to start over? Records → Reset all data clears everything.",
-                       "想重来？在「记录」页用「重置所有数据」清空。"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Button(role: .destructive) {
+                    confirmClear = true
+                } label: {
+                    Label(L("Clear all record data (testing)", "清空记录数据（测试用）"), systemImage: "trash")
+                }
+                .alert(L("Clear all records?", "清空全部记录数据？"), isPresented: $confirmClear) {
+                    Button(L("Cancel", "取消"), role: .cancel) {}
+                    Button(L("Clear", "清空"), role: .destructive) { clearRecords() }
+                } message: {
+                    Text(L("Labs / flares / water / food / sleep / weight / med check-ins will be deleted. Health profile, medication plan and food library are kept. Tap again to redo the test.",
+                           "化验/发作/喝水/饮食/入睡/体重/用药打卡将删除。健康档案、用药方案、食物库保留。清完可重新铺数据。"))
+                }
+            } header: {
+                Text(L("Reset for retest", "重新测试"))
             }
         }
         .navigationTitle(L("Test data", "测试数据"))
@@ -137,6 +191,52 @@ struct TestDataView: View {
     }
 
     // MARK: 生成
+
+    /// 2026-11-27：从最晚记录日往后铺到今天（补空窗——趋势图/热力格"近期不显示"的解法）
+    private func generateForward(days: Int) {
+        guard let l = latestDay else { return }
+        let flaresBefore = store.flares.count
+        let weightBefore = store.weightLogs.count
+        var cursor = cal.date(byAdding: .day, value: 1, to: l) ?? l
+        let today = cal.startOfDay(for: Date())
+        for _ in 0..<days where cursor <= today {
+            fillOneDay(cursor)
+            cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
+        }
+        // 空窗较长时保底发作/体重（与往回铺同规则）
+        if days >= 7 && store.flares.count == flaresBefore {
+            let mid = cal.date(byAdding: .day, value: -(days / 2), to: today) ?? today
+            store.flares.append(
+                Flare(startDate: cal.date(byAdding: .hour, value: 3, to: mid) ?? mid,
+                      endDate: nil, joints: ["脚趾"], painPeak: 6,
+                      canWalk: false, workImpact: 1, workImpactNote: nil,
+                      tookMedsToday: nil, tookPainkiller: true,
+                      painkillerName: nil, triggerNotes: nil)
+            )
+        }
+        if days >= 7 && store.weightLogs.count == weightBefore {
+            let mid = cal.date(byAdding: .day, value: -(days / 2), to: today) ?? today
+            store.weightLogs.append(WeightLog(date: mid, kg: (Double.random(in: 74...79) * 10).rounded() / 10))
+        }
+        toast = L("Filled \(days) day(s) up to today — labs \(store.readings.count) · flares \(store.flares.count) · water \(store.waterDays.count)",
+                  "已补 \(days) 天到今天 —— 化验 \(store.readings.count) · 发作 \(store.flares.count) · 喝水 \(store.waterDays.count)")
+    }
+
+    /// 2026-11-27 健哥令：清空记录类数据（保留健康档案/用药方案/食物库/动机），反复测试用
+    private func clearRecords() {
+        store.readings = []
+        store.flares = []
+        store.waterDays = []
+        store.sleepLogs = []
+        store.foodDays = []
+        store.weightLogs = []
+        store.medLogs = []
+        store.sexualLogs = []
+        store.confirmedPainFreeDays = []
+        store.save()
+        toast = L("Cleared. Tap \"Add seven days\" then \"Fill to today\" for a fresh 2-week dataset.",
+                  "已清空。先点「加 7 天」再点「补到今天」，马上得到一套两周的新数据。")
+    }
 
     private func generate(days: Int) {
         let flaresBefore = store.flares.count
@@ -176,7 +276,16 @@ struct TestDataView: View {
         }
     }
 
+    /// 2026-11-27：幂等化——同一天重复填充先删旧（反复测试/重复点击不叠数据）
     private func fillOneDay(_ day: Date) {
+        store.sleepLogs.removeAll { cal.isDate($0.night, inSameDayAs: day) }
+        store.waterDays.removeAll { cal.isDate($0.day, inSameDayAs: day) }
+        store.foodDays.removeAll { cal.isDate($0.day, inSameDayAs: day) }
+        store.readings.removeAll { cal.isDate($0.date, inSameDayAs: day) }
+        store.flares.removeAll { cal.isDate($0.startDate, inSameDayAs: day) }
+        store.weightLogs.removeAll { cal.isDate($0.date, inSameDayAs: day) }
+        store.medLogs.removeAll { cal.isDate($0.date, inSameDayAs: day) }
+
         // ① 入睡（0=23点前 1=23-24 2=0-1 3=1点后）——偏向前半夜
         let buckets = [0, 0, 1, 1, 1, 2, 2, 3]
         store.sleepLogs.append(
