@@ -12,7 +12,7 @@ struct TrendView: View {
         NavigationView {
             List {
                 // A6：健康档案置顶一行（填了才显示）
-                if store.profile.isComplete {
+                if store.profile.hasContent {
                     Section {
                         NavigationLink { HealthProfileEditor() } label: {
                             HStack {
@@ -609,7 +609,7 @@ enum ClinicReportGenerator {
 
         // A6/C11：档案头
         var profileHtml = ""
-        if store.profile.isComplete {
+        if store.profile.hasContent {
             let p = store.profile
             var parts: [String] = []
             if let a = p.age { parts.append(L("Age \(a)", "年龄 \(a)岁")) }

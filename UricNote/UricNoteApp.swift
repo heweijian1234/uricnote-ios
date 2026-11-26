@@ -44,8 +44,10 @@ struct RootView: View {
                 }
                 .onAppear {
                     if !hasLaunchedOnce { hasLaunchedOnce = true }
+                    // 2026-11-26：只改 lastOpenedAt（meta 的 didSet 自己会落盘）。
+                    // 去掉了原来这里的 store.save()——它是全量写盘，会把 load() 解码失败后
+                    // 退回默认值的内存状态**立即覆盖磁盘原始数据**，用户数据一旦读不出就永久没了。
                     store.meta.lastOpenedAt = Date()
-                    store.save()
                     // 🔴第三重保险：进主界面即写独立 key（杀进程/解码回退都不影响）
                     UserDefaults.standard.set(true, forKey: "ur.onboarded.v2")
                 }

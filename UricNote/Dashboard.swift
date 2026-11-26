@@ -18,7 +18,7 @@ struct DashboardView: View {
                     wellControlledBadge
                     bigNumbers
                     painFreeConfirmRow   // v11.1 #9：记无痛（C 方案）
-                    if !store.profile.isComplete { profileCard }
+                    if !store.profile.hasContent { profileCard }
                     recallAlarmCardInline   // 健哥11-25令：回顾提醒提回待办区上方（11-23 曾压到最下方）
                     todayTodos       // 待办驱动：记完的行消失
                     dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷

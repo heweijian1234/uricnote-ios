@@ -248,6 +248,42 @@ struct HealthProfile: Codable {
     var familyGout: String?        // 直系亲属痛风：有/无/不确定
     var hlaTested: String?         // HLA-B*5801 检测史：查过-阴性/查过-阳性/没查过
     var isComplete: Bool = false   // 填完档案卡从仪表盘消失（A6）
+
+    init() {}
+
+    /// 2026-11-26：是否算「已建档」。
+    /// 原来只看 isComplete，而 isComplete 只在点「保存档案」按钮时才置 true——
+    /// 字段明明改一下立刻落盘，但只要忘了点那颗按钮，仪表盘的档案卡就永远不消失，
+    /// 用户体感就是「每次打开都要重填」。改成：有任何实质内容就算填过。
+    var hasContent: Bool {
+        if isComplete { return true }
+        if heightCm != nil || weightKg != nil || age != nil || birthDate != nil { return true }
+        if gender != nil || region != nil || !conditions.isEmpty { return true }
+        if let d = drugAllergies, !d.isEmpty { return true }
+        if let f = foodAllergies, !f.isEmpty { return true }
+        if familyGout != nil || hlaTested != nil { return true }
+        return false
+    }
+
+    // 🔴 2026-11-26 根因修复：合成 Codable **不认字段默认值**，
+    // 旧存档里只要少一个 key（如 isComplete/conditions）就整体解码失败，
+    // 配合 load() 的 try? 变成静默重置——表现为「每次打开都要重填健康档案」。
+    // 全字段改用 decodeIfPresent，缺 key 走默认值，永不整块丢。
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        heightCm = try c.decodeIfPresent(Double.self, forKey: .heightCm)
+        weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg)
+        age = try c.decodeIfPresent(Int.self, forKey: .age)
+        birthDate = try c.decodeIfPresent(Date.self, forKey: .birthDate)
+        gender = try c.decodeIfPresent(String.self, forKey: .gender)
+        region = try c.decodeIfPresent(String.self, forKey: .region)
+        conditions = try c.decodeIfPresent([String].self, forKey: .conditions) ?? []
+        drugAllergies = try c.decodeIfPresent(String.self, forKey: .drugAllergies)
+        foodAllergies = try c.decodeIfPresent(String.self, forKey: .foodAllergies)
+        familyGout = try c.decodeIfPresent(String.self, forKey: .familyGout)
+        hlaTested = try c.decodeIfPresent(String.self, forKey: .hlaTested)
+        isComplete = try c.decodeIfPresent(Bool.self, forKey: .isComplete) ?? false
+    }
 }
 
 // MARK: - 习惯种子（v11 B5：起步脚手架定位+毕业机制+中文情绪奖励）
@@ -264,8 +300,18 @@ struct Seed: Identifiable, Codable {
 // MARK: - 复查节律（v11 A5：间隔可调+推算过程显示）
 struct ReviewSchedule: Codable {
     var nextReviewDate: Date?
-    var intervalWeeks: Int = 8     // 4/6/8/12 可调（界面落地）
+    var intervalWeeks: Int = 8     // 0=不记录 4/6/8/12=按周 -1=自定义日期
     var rhythmCardShown: Bool = false
+
+    init() {}
+
+    // 同 HealthProfile：缺 key 走默认值，不整块丢
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nextReviewDate = try c.decodeIfPresent(Date.self, forKey: .nextReviewDate)
+        intervalWeeks = try c.decodeIfPresent(Int.self, forKey: .intervalWeeks) ?? 8
+        rhythmCardShown = try c.decodeIfPresent(Bool.self, forKey: .rhythmCardShown) ?? false
+    }
 }
 
 // MARK: - 断记确认
@@ -281,6 +327,15 @@ struct RecallAlarm: Codable {
     var enabled: Bool = false      // C10 健哥裁：要有开关，默认无所谓（默认关）
     var hour: Int = 21
     var minute: Int = 30
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        hour = try c.decodeIfPresent(Int.self, forKey: .hour) ?? 21
+        minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 30
+    }
 }
 
 // MARK: - 元配置
@@ -296,6 +351,25 @@ struct AppMeta: Codable {
     var dailyFoods: [String] = []           // 健哥11-21令：自定义日常饮食表（从嘌呤库选加，日后可删）
     var customScenes: [String] = []         // 健哥11-21令：自定义场景（今天吃的是一整场——用户自建，其他兜底）
     var waterAutoFillAsked: Bool = false    // 问过没有（只问一次）
+
+    init() {}
+
+    // 🔴 同 HealthProfile：这也是「每次进都弹 onboarding」的根因所在——
+    // onboardingDone=false 只是因为整个 meta 解码失败退回默认值，并非用户没填过。
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        onboardingDone = try c.decodeIfPresent(Bool.self, forKey: .onboardingDone) ?? false
+        motivation = try c.decodeIfPresent(MotivationChoice.self, forKey: .motivation)
+        motivationCustomText = try c.decodeIfPresent(String.self, forKey: .motivationCustomText)
+        lastOpenedAt = try c.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
+        unitIsUmol = try c.decodeIfPresent(Bool.self, forKey: .unitIsUmol) ?? true
+        proUnlocked = try c.decodeIfPresent(Bool.self, forKey: .proUnlocked) ?? false
+        seedVotesTotal = try c.decodeIfPresent(Int.self, forKey: .seedVotesTotal) ?? 0
+        waterAutoFillActive = try c.decodeIfPresent(Bool.self, forKey: .waterAutoFillActive) ?? false
+        dailyFoods = try c.decodeIfPresent([String].self, forKey: .dailyFoods) ?? []
+        customScenes = try c.decodeIfPresent([String].self, forKey: .customScenes) ?? []
+        waterAutoFillAsked = try c.decodeIfPresent(Bool.self, forKey: .waterAutoFillAsked) ?? false
+    }
 }
 
 // MARK: - Store

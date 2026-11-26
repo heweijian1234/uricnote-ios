@@ -19,7 +19,7 @@ final class ProStore: ObservableObject {
 
     /// 商店没返回价格时的兜底显示（仅文案，不参与计价）
     var priceText: String {
-        product?.displayPrice ?? "$9.99"
+        product?.displayPrice ?? "$14.99"
     }
 
     func load() async {
