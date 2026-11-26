@@ -541,7 +541,8 @@ enum ClinicReportPDF {
 
         func rankBars(items: [(name: String, count: Int)]) {
             guard !items.isEmpty else { return }
-            let maxC = Double(items.map(\.count).max() ?? 1)
+            // 注意：Swift 不支持元组元素的 keyPath（\.count 非法），必须用闭包
+            let maxC = Double(items.map { $0.count }.max() ?? 1)
             for it in items {
                 need(18)
                 draw(it.name, font: .systemFont(ofSize: 8.5), color: ink,
