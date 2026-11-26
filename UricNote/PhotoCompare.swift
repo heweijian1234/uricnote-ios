@@ -388,7 +388,7 @@ struct PhotoLibPicker: UIViewControllerRepresentable {
             guard let item = results.first else { parent.onPicked(nil); return }
             item.itemProvider.loadObject(ofClass: UIImage.self) { obj, _ in
                 DispatchQueue.main.async {
-                    parent.onPicked(obj as? UIImage)
+                    self.parent.onPicked(obj as? UIImage)
                 }
             }
         }
