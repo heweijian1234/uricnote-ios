@@ -1,0 +1,171 @@
+import SwiftUI
+
+// MARK: - 测试数据生成（健哥 2026-11-26 令：手工攒 90 天数据太慢，要一键铺）
+//
+// 设计要点：
+// - 每次点击填「已有数据中最早一天的前一天」，所以连点会自然往前推，不需要维护状态
+// - 生成的是「像真的」的数据：喝水有高有低、入睡有早有晚、化验每几天一条、发作偶尔一次
+// - 上架前把 RecordListView.showsTestTools 改成 false，入口即消失，本文件可留着不动
+
+struct TestDataView: View {
+    @ObservedObject var store = Store.shared
+    @State private var toast: String?
+
+    private let cal = Calendar.current
+
+    /// 已有数据里最早的一天
+    private var earliestDay: Date? {
+        var dates: [Date] = []
+        dates += store.readings.map(\.date)
+        dates += store.flares.map(\.startDate)
+        dates += store.waterDays.map(\.day)
+        dates += store.sleepLogs.map(\.night)
+        dates += store.foodDays.map(\.day)
+        dates += store.weightLogs.map(\.date)
+        return dates.map { cal.startOfDay(for: $0) }.min()
+    }
+
+    private var nextDay: Date {
+        guard let e = earliestDay else { return cal.startOfDay(for: Date()) }
+        return cal.date(byAdding: .day, value: -1, to: e) ?? e
+    }
+
+    private var totalEntries: Int {
+        store.readings.count + store.flares.count + store.waterDays.count
+            + store.sleepLogs.count + store.foodDays.count + store.weightLogs.count
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                HStack {
+                    Text(L("Entries so far", "已有记录"))
+                    Spacer()
+                    Text("\(totalEntries)").foregroundColor(.secondary)
+                }
+                HStack {
+                    Text(L("Next day to fill", "下一次生成"))
+                    Spacer()
+                    Text(nextDay.formatted(.dateTime.month().day()))
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text(L("Test data", "测试数据"))
+            } footer: {
+                Text(L("Each tap fills one whole day with plausible data and moves the date back one day. These are sample records, not real ones — turn this off before release.",
+                       "每点一次生成一整天的合理数据，日期往前推一天。这些是示例记录，不是真实数据——上架前关掉这个入口。"))
+            }
+
+            Section {
+                Button {
+                    generate(days: 1)
+                } label: {
+                    Label(L("Add one day", "加 1 天"), systemImage: "plus.circle")
+                }
+                Button {
+                    generate(days: 7)
+                } label: {
+                    Label(L("Add seven days", "加 7 天"), systemImage: "plus.circle.fill")
+                }
+            }
+
+            Section {
+                Text(L("Want to start over? Records → Reset all data clears everything.",
+                       "想重来？在「记录」页用「重置所有数据」清空。"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .navigationTitle(L("Test data", "测试数据"))
+        .alert(toast ?? "", isPresented: Binding(
+            get: { toast != nil },
+            set: { if !$0 { toast = nil } }
+        )) {
+            Button(L("OK", "知道了")) { toast = nil }
+        }
+    }
+
+    // MARK: 生成
+
+    private func generate(days: Int) {
+        var cursor = nextDay
+        for _ in 0..<days {
+            fillOneDay(cursor)
+            cursor = cal.date(byAdding: .day, value: -1, to: cursor) ?? cursor
+        }
+        toast = L("Added \(days) day(s)", "已生成 \(days) 天")
+    }
+
+    private func fillOneDay(_ day: Date) {
+        // ① 入睡（0=23点前 1=23-24 2=0-1 3=1点后）——偏向前半夜
+        let buckets = [0, 0, 1, 1, 1, 2, 2, 3]
+        store.sleepLogs.append(
+            SleepLog(night: day, bucket: buckets.randomElement() ?? 1)
+        )
+
+        // ② 喝水：5-10 杯 × 250ml = 1250-2500ml，有时达标有时不达标
+        let cups = Int.random(in: 5...10)
+        let cupList = (0..<cups).map { i in
+            WaterCup(time: cal.date(byAdding: .hour, value: 8 + i, to: day) ?? day, ml: 250)
+        }
+        store.waterDays.append(
+            WaterDay(day: day,
+                     cups: cupList,
+                     cupSizeMl: 250,
+                     urine: UrineSlot(morning: nil, noon: nil, evening: nil),
+                     goalMl: 2000)
+        )
+
+        // ③ 饮食：三天里一天「没碰高嘌呤」，其余随机 0-2 项
+        if Int.random(in: 0..<3) == 0 {
+            store.foodDays.append(
+                FoodDayLog(day: day, items: [], scenes: [], noTriggerToday: true)
+            )
+        } else {
+            let pool = ["啤酒", "火锅汤底", "动物内脏", "海鲜", "浓肉汤"]
+            let picked = Array(pool.shuffled().prefix(Int.random(in: 0...2)))
+            let scenes = picked.contains("火锅汤底") ? ["火锅"] : []
+            store.foodDays.append(
+                FoodDayLog(day: day,
+                           items: picked,
+                           scenes: scenes,
+                           noTriggerToday: picked.isEmpty)
+            )
+        }
+
+        // ④ 化验值：每 4 天一条，5.0-7.6 mg/dL（跨过 6.0 目标线，图才有起伏）
+        if Int.random(in: 0..<4) == 0 {
+            let v = (Double.random(in: 5.0...7.6) * 10).rounded() / 10
+            store.readings.append(
+                UricReading(date: cal.date(byAdding: .hour, value: 9, to: day) ?? day,
+                            valueMgDl: v,
+                            creatinineMgDl: nil,
+                            source: "lab")
+            )
+        }
+
+        // ⑤ 发作：8% 概率
+        if Int.random(in: 0..<100) < 8 {
+            let joints = ["脚趾", "脚踝", "膝盖", "手指"]
+            store.flares.append(
+                Flare(startDate: cal.date(byAdding: .hour, value: 3, to: day) ?? day,
+                      endDate: nil,
+                      joints: [joints.randomElement() ?? "脚趾"],
+                      painPeak: Int.random(in: 4...9),
+                      canWalk: Bool.random(),
+                      workImpact: Int.random(in: 0...2),
+                      workImpactNote: nil,
+                      tookMedsToday: nil,
+                      tookPainkiller: Bool.random(),
+                      painkillerName: nil,
+                      triggerNotes: nil)
+            )
+        }
+
+        // ⑥ 体重：每 7 天一条
+        if Int.random(in: 0..<7) == 0 {
+            let kg = (Double.random(in: 74...79) * 10).rounded() / 10
+            store.weightLogs.append(WeightLog(date: day, kg: kg))
+        }
+    }
+}

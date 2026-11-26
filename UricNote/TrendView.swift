@@ -11,57 +11,60 @@ struct TrendView: View {
     var body: some View {
         NavigationView {
             List {
-                // A6：健康档案置顶一行（填了才显示）
-                if store.profile.hasContent {
-                    Section {
-                        NavigationLink { HealthProfileEditor() } label: {
-                            HStack {
-                                Image(systemName: "person.text.rectangle").foregroundColor(.brand)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(profileLine).font(.callout)
-                                    Text(L("Health profile (tap to edit)", "健康档案（点击修改）")).font(.caption2).foregroundColor(.secondary)
-                                }
+                // 2026-11-26：健康档案入口从趋势页移除，统一走记录页顶部那处
+                Section(L("Key trends", "关键趋势")) {
+                    // 健哥11-23令⑩：依从率→药物使用30天详情（每日吃了没/止痛药）
+                    trendRow(icon: "pills.fill", color: .brand, title: L("Medication — last 30 days", "药物使用（近 30 天）"), value: medDetailText)
+                    trendRow(icon: "sun.max", color: .warn, title: L("Pain-free days", "无痛天数"), value: store.flareFreeDays.map { L("\($0) days", "\($0) 天") } ?? "—")
+
+                    // 2026-11-26：原来的「近14天入睡平均值」「今天喝水」两行文字→趋势图，
+                    // 范围 30 → 90 天（慢病要看长弧，14 天均值和单日值都读不出规律）
+                    if store.sleepLogs.count >= 2 {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L("Bedtime trend (last 90 days)", "入睡趋势（近 90 天）"))
+                                .font(.callout)
+                            Text(L("Higher dot = later bedtime. Gaps = days not logged.", "点越高睡得越晚。空白=当天没记。"))
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                        .padding(.top, 2)
+
+                        Chart(store.sleepLogs.suffix(90)) { s2 in
+                            PointMark(
+                                x: .value("Night", s2.night, unit: .day),
+                                y: .value("bucket", s2.bucket)
+                            )
+                            .foregroundStyle(s2.bucket >= 2 ? Color.warn : Color.brand)
+                        }
+                        .chartYScale(domain: -0.5...3.5)
+                        .chartYAxis {
+                            AxisMarks(values: [0, 1, 2, 3]) { v in
+                                AxisValueLabel(["<23", "23-24", "0-1", ">1"][min(v.index, 3)])
                             }
                         }
+                        .frame(height: 110)
+                        .padding(.vertical, 4)
                     }
-                }
-                Section(L("Three trend lines (real, measurable numbers)", "三线趋势（真实可算指标）")) {
-                    // 健哥11-23令⑩：依从率→药物使用30天详情（每日吃了没/止痛药）
-    trendRow(icon: "pills.fill", color: .brand, title: L("Medication — last 30 days", "药物使用（近 30 天）"), value: medDetailText)
-                    trendRow(icon: "sun.max", color: .warn, title: L("Pain-free days", "无痛天数"), value: store.flareFreeDays.map { L("\($0) days", "\($0) 天") } ?? "—")
-                    trendRow(icon: "moon.fill", color: .brand, title: L("Sleep (14-day avg)", "近 14 天入睡（平均）"), value: sleepAvgText)
-                    trendRow(icon: "drop.fill", color: .water, title: L("Water today", "今天喝水"), value: waterText)
-            // 健哥11-23令⑪：喝水30天柱状趋势
-            if store.waterDays.count >= 2 {
-                Chart(store.waterDays.suffix(30)) { w in
-                    BarMark(
-                        x: .value("Day", w.day, unit: .day),
-                        y: .value("ml", w.totalMl)
-                    )
-                    .foregroundStyle(w.totalMl >= w.goalMl ? Color.water : Color.water.opacity(0.35))
-                }
-                .chartYAxis { AxisMarks(position: .trailing) }
-                .frame(height: 90)
-                .padding(.vertical, 4)
-            }
-            // 健哥11-23令⑪：入睡30天散点趋势（bucket 0-3→23点前~1点后）
-            if store.sleepLogs.count >= 2 {
-                Chart(store.sleepLogs.suffix(30)) { s2 in
-                    PointMark(
-                        x: .value("Night", s2.night, unit: .day),
-                        y: .value("bucket", s2.bucket)
-                    )
-                    .foregroundStyle(s2.bucket >= 2 ? Color.warn : Color.brand)
-                }
-                .chartYScale(domain: -0.5...3.5)
-                .chartYAxis {
-                    AxisMarks(values: [0, 1, 2, 3]) { v in
-                        AxisValueLabel(["<23", "23-24", "0-1", ">1"][min(v.index, 3)])
+
+                    if store.waterDays.count >= 2 {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L("Water trend (last 90 days)", "喝水趋势（近 90 天）"))
+                                .font(.callout)
+                            Text(L("Solid bar = goal reached that day", "实心柱=当天达标"))
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                        .padding(.top, 2)
+
+                        Chart(store.waterDays.suffix(90)) { w in
+                            BarMark(
+                                x: .value("Day", w.day, unit: .day),
+                                y: .value("ml", w.totalMl)
+                            )
+                            .foregroundStyle(w.totalMl >= w.goalMl ? Color.water : Color.water.opacity(0.35))
+                        }
+                        .chartYAxis { AxisMarks(position: .trailing) }
+                        .frame(height: 110)
+                        .padding(.vertical, 4)
                     }
-                }
-                .frame(height: 90)
-                .padding(.vertical, 4)
-            }
                 }
                 // v11.1：坚持热力格（HabitKit 式——长期管理病的坚持度可视化）
                 Section {
@@ -80,25 +83,34 @@ struct TrendView: View {
                     Text(L("Three habits: meds, water, food (sleep counts too). The grid shows your streaks — no judgment for missed days.", "三类=吃药打卡/喝水/饮食（入睡也算）。格子只给坚持可视化——不评判漏掉的格子。"))
                 }
                 Section {
-                    NavigationLink { UricTrendDetailView() } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(L("Uric acid trend chart", "尿酸趋势图")).font(.body.weight(.medium))
-                                Text(L("Lab values with target line", "化验值折线+目标线")).font(.caption).foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chart.line.uptrend.xyaxis").foregroundColor(.brand)
+                    // 2026-11-26：尿酸趋势图 + 诱因排行 纳入 Pro（健哥令）
+                    if pro.isPro {
+                        NavigationLink { UricTrendDetailView() } label: {
+                            linkRow(icon: "chart.line.uptrend.xyaxis",
+                                    title: L("Uric acid trend chart", "尿酸趋势图"),
+                                    subtitle: L("Lab values with target line", "化验值折线+目标线"))
                         }
-                    }
-                    NavigationLink { TriggerRankView() } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(L("Trigger ranking", "诱因排行")).font(.body.weight(.medium))
-                                Text(triggerStatusText).font(.caption).foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "sparkles").foregroundColor(.brand)
+                        NavigationLink { TriggerRankView() } label: {
+                            linkRow(icon: "sparkles",
+                                    title: L("Trigger ranking", "诱因排行"),
+                                    subtitle: triggerStatusText)
                         }
+                    } else {
+                        Button { showPaywall = true } label: {
+                            linkRow(icon: "chart.line.uptrend.xyaxis",
+                                    title: L("Uric acid trend chart", "尿酸趋势图"),
+                                    subtitle: L("Pro — full history with target line", "Pro 功能——全部化验值+目标线"),
+                                    locked: true)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button { showPaywall = true } label: {
+                            linkRow(icon: "sparkles",
+                                    title: L("Trigger ranking", "诱因排行"),
+                                    subtitle: L("Pro — what you ate before each flare", "Pro 功能——每次发作前你吃了什么"),
+                                    locked: true)
+                        }
+                        .buttonStyle(.plain)
                     }
                     NavigationLink { ChangeView() } label: {
                         HStack {
@@ -206,6 +218,22 @@ struct TrendView: View {
             Text(title)
             Spacer()
             Text(value).font(.body.weight(.semibold)).foregroundColor(.secondary)
+        }
+    }
+
+    /// 带图标的功能入口行（Pro 锁态复用同一套排版）
+    private func linkRow(icon: String, title: String, subtitle: String, locked: Bool = false) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(title).font(.body.weight(.medium))
+                    if locked { ProTag() }
+                }
+                Text(subtitle).font(.caption).foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: locked ? "lock.fill" : icon)
+                .foregroundColor(locked ? .secondary : .brand)
         }
     }
 

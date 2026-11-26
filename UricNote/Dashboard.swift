@@ -18,7 +18,11 @@ struct DashboardView: View {
                     wellControlledBadge
                     bigNumbers
                     painFreeConfirmRow   // v11.1 #9：记无痛（C 方案）
-                    if !store.profile.hasContent { profileCard }
+                    // 2026-11-26：判断必须用 isComplete 而不是 hasContent。
+                    // hasContent 在用户敲第一个字时就变 true → 卡片从视图树消失 →
+                    // NavigationLink 源没了 → 编辑器被弹回（健哥实测"打一个字就自动关闭"）。
+                    // 改为：卡片只认 isComplete，由编辑器 onDisappear 自动置位。
+                    if !store.profile.isComplete { profileCard }
                     recallAlarmCardInline   // 健哥11-25令：回顾提醒提回待办区上方（11-23 曾压到最下方）
                     todayTodos       // 待办驱动：记完的行消失
                     dailyShortcuts   // v11.1 #5：喝水/饮食常驻快捷
@@ -703,6 +707,11 @@ struct HealthProfileEditor: View {
             .buttonStyle(.borderedProminent)
         }
         .navigationTitle(L("Health profile", "健康档案"))
+        .onDisappear {
+            // 2026-11-26：只要填过实质内容就自动算建档（不再依赖「保存档案」按钮）。
+            // 放在 onDisappear 而不是编辑过程中，避免卡片在打字时消失导致编辑器被弹回。
+            if store.profile.hasContent { store.profile.isComplete = true }
+        }
     }
 }
 

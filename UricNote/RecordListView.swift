@@ -7,6 +7,11 @@ import Charts
 struct RecordListView: View {
     @ObservedObject var store = Store.shared
 
+    /// 测试数据入口开关（2026-11-26 健哥令：手工攒 90 天太慢）。
+    /// 🔴 上架前改成 false，入口即从记录页消失；TestDataView 文件可留着不动。
+    /// 注意不能用 #if DEBUG —— CI 出的是 Release 包，DEBUG 块在 TestFlight 里不存在。
+    private let showsTestTools = true
+
     var body: some View {
         NavigationView {
             List {
@@ -43,6 +48,14 @@ struct RecordListView: View {
                 Section(L("Medication", "用药")) {
                     NavigationLink { MedTodayView() } label: {
                         Label(L("Current medication & dose", "当前使用药物药量"), systemImage: "pills").foregroundColor(.brand)
+                    }
+                }
+                if showsTestTools {
+                    Section(L("Testing", "测试")) {
+                        NavigationLink { TestDataView() } label: {
+                            Label(L("Generate test data", "生成测试数据"), systemImage: "wand.and.stars")
+                                .foregroundColor(.brand)
+                        }
                     }
                 }
                 #if DEBUG
