@@ -5,7 +5,7 @@ import SwiftUI
 enum TestFlags {
     /// 控制：记录页「测试」入口 + Pro 强制解锁 是否可用。
     /// 🔴 上架前改成 false —— 入口消失，且强制解锁立即失效（即使 UserDefaults 里还留着开关值）。
-    static let enabled = true
+    static let enabled = false
 
     /// Pro 强制解锁的 UserDefaults key（仅 TestFlags.enabled 为 true 时被读取）
     static let proForceUnlockKey = "ur.proForceUnlocked"
