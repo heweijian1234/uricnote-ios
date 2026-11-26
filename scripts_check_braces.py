@@ -45,6 +45,7 @@ files = [
     'UricNote/Onboarding.swift',
     'UricNote/ProStore.swift',
     'UricNote/UricNoteApp.swift',
+    'UricNote/PhotoCompare.swift',
 ]
 
 ok = True

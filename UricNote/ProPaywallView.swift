@@ -91,6 +91,12 @@ struct ProPaywallView: View {
                 body: L("The free version shows the last 90 days. Pro shows every lab value you have ever logged — the long arc is what your doctor actually needs.",
                         "免费版显示最近 90 天。Pro 显示你记录过的全部化验值——医生真正要看的，是那条长曲线。")
             )
+            benefitRow(
+                icon: "camera.fill",
+                title: L("Photo compare", "照片对比"),
+                body: L("Photograph the affected joint over time and compare two photos side by side — see the swelling go down with your own eyes. Photos never leave your phone.",
+                        "给发作的关节随时间拍照，两张并排对比——消肿看得见。照片永不离开你的手机。")
+            )
         }
     }
 

@@ -44,6 +44,10 @@ struct RecordListView: View {
                     NavigationLink { RhythmPage() } label: {
                         Label(L("Body rhythm (private)", "身体节律（私密）"), systemImage: "waveform.path.ecg").foregroundColor(.pink)
                     }
+                    // 2026-11-27：照片对比入口（Pro 权益补齐——记录免费，并排对比 Pro）
+                    NavigationLink { PhotosPage() } label: {
+                        Label(L("Photo compare", "照片对比"), systemImage: "camera.fill").foregroundColor(.brand)
+                    }
                 }
                 Section(L("Medication", "用药")) {
                     NavigationLink { MedTodayView() } label: {
