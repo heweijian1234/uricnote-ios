@@ -252,7 +252,8 @@ enum ClinicReportPDF {
 
         @discardableResult
         private func draw(_ s: String, font: UIFont, color: UIColor,
-                          rect: CGRect, align: NSTextAlignment = .left) -> CGFloat {
+                          align: NSTextAlignment = .left,
+                          rect: CGRect) -> CGFloat {
             let ps = NSMutableParagraphStyle()
             ps.alignment = align
             ps.lineBreakMode = .byTruncatingTail
@@ -386,9 +387,9 @@ enum ClinicReportPDF {
                 UIColor(red: 0.95, green: 0.97, blue: 0.96, alpha: 1).setFill()
                 bg.fill()
                 draw(c.0, font: .systemFont(ofSize: 16, weight: .bold), color: c.2,
-                     rect: CGRect(x: x, y: y + 8, width: w, height: 20), align: .center)
+                     align: .center, rect: CGRect(x: x, y: y + 8, width: w, height: 20))
                 draw(c.1, font: .systemFont(ofSize: 6.8), color: sub,
-                     rect: CGRect(x: x + 3, y: y + 30, width: w - 6, height: 12), align: .center)
+                     align: .center, rect: CGRect(x: x + 3, y: y + 30, width: w - 6, height: 12))
                 x += w + gap
             }
             y += 56
