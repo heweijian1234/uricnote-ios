@@ -494,29 +494,12 @@ enum ClinicReportGenerator {
         let tmp: URL
         switch format {
         case .pdf:
-            // 健哥11-22令1根修：真PDF渲染（原假后缀法文件打不开）
-            let html = buildHTML(store: store, readings: readings, flares: flares)
+            // 2026-11-26 重做：原实现只调一次 ctx.beginPage()，把整份 HTML 转富文本
+            // 硬画到一张 A4 上，超出页面的明细全部被裁掉（健哥实测"导出只有很少信息"）。
+            // 改用 ClinicReportPDF：Core Graphics 手绘多页 + 尿酸折线/发作频次/饮水/入睡图
+            // + 诱因排行 + 全部化验与发作明细。
             tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.pdf")
-            let fmt = UIGraphicsPDFRendererFormat()
-            fmt.documentInfo = [
-                kCGPDFContextTitle as String: "UricNote Life Record",
-                kCGPDFContextCreator as String: "UricNote"
-            ]
-            // A4 595×842pt，多页自动分页
-            let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)
-            let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: fmt)
-            let attr = try! NSAttributedString(
-                data: Data(html.utf8),
-                options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
-                documentAttributes: nil)
-            let data = renderer.pdfData { ctx in
-                ctx.beginPage()
-                // 简单分页布局：文本绘制器逐页排
-                let framesetter = attr.boundingRect(with: CGSize(width: pageRect.width - 60, height: .greatestFiniteMagnitude), options: .usesLineFragmentOrigin, context: nil)
-                _ = framesetter
-                attr.draw(with: CGRect(x: 30, y: 30, width: pageRect.width - 60, height: pageRect.height - 60), options: .usesLineFragmentOrigin, context: nil)
-            }
-            try? data.write(to: tmp)
+            try? ClinicReportPDF.make(store: store).write(to: tmp)
         case .html:
             let html = buildHTML(store: store, readings: readings, flares: flares)
             tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("UricNote_Clinic.html")
@@ -631,6 +614,92 @@ enum ClinicReportGenerator {
         return t
     }
 
+    // MARK: HTML 图表（2026-11-26：原来 HTML 只有表没有图，趋势看不出来）
+
+    /// 尿酸折线（内联 SVG——浏览器打开即见，不依赖任何外部资源）
+    private static func svgUricChart(readings: [UricReading], unitIsUmol: Bool) -> String {
+        guard readings.count >= 2 else { return "" }
+        let w = 660.0, h = 150.0, padL = 36.0, padT = 10.0, padB = 20.0
+        let vals = readings.map { unitIsUmol ? $0.urateUnit : $0.valueMgDl }
+        let target = unitIsUmol ? 360.0 : 6.0
+        let lo = min(vals.min() ?? 0, target) * 0.92
+        let hi = max(vals.max() ?? 1, target) * 1.06
+        let span = max(hi - lo, 0.001)
+        let t0 = readings.first!.date.timeIntervalSince1970
+        let t1 = readings.last!.date.timeIntervalSince1970
+        let tSpan = max(t1 - t0, 1)
+        let plotW = w - padL - 10
+        let plotH = h - padT - padB
+
+        func px(_ t: Double) -> Double { padL + (t - t0) / tSpan * plotW }
+        func py(_ v: Double) -> Double { padT + (hi - v) / span * plotH }
+
+        var poly: [String] = []
+        var dots = ""
+        for r in readings {
+            let v = unitIsUmol ? r.urateUnit : r.valueMgDl
+            let x = px(r.date.timeIntervalSince1970)
+            let yv = py(v)
+            poly.append(String(format: "%.1f,%.1f", x, yv))
+            let c = v <= target ? "#389E63" : "#D2423D"
+            dots += "<circle cx='\(String(format: "%.1f", x))' cy='\(String(format: "%.1f", yv))' r='2.6' fill='\(c)'/>"
+        }
+
+        var grid = ""
+        for i in 0...3 {
+            let gy = padT + plotH * Double(i) / 3
+            let val = hi - span * Double(i) / 3
+            grid += "<line x1='\(padL)' y1='\(String(format: "%.1f", gy))' x2='\(String(format: "%.1f", w - 10))' y2='\(String(format: "%.1f", gy))' stroke='#eeeeee' stroke-width='1'/>"
+            grid += "<text x='\(padL - 5)' y='\(String(format: "%.1f", gy + 3))' font-size='8' fill='#888' text-anchor='end'>\(String(format: "%.0f", val))</text>"
+        }
+
+        let ty = String(format: "%.1f", py(target))
+        let df = DateFormatter(); df.dateFormat = "M/d"
+        let first = df.string(from: readings.first!.date)
+        let last = df.string(from: readings.last!.date)
+
+        return """
+        <svg viewBox="0 0 \(Int(w)) \(Int(h))" width="100%" style="margin:8px 0">
+        \(grid)
+        <line x1='\(padL)' y1='\(ty)' x2='\(w - 10)' y2='\(ty)' stroke='#389E63' stroke-width='1' stroke-dasharray='4 3'/>
+        <polyline points='\(poly.joined(separator: " "))' fill='none' stroke='#0E7C66' stroke-width='1.8'/>
+        \(dots)
+        <text x='\(padL)' y='\(h - 5)' font-size='8' fill='#888'>\(first)</text>
+        <text x='\(w - 10)' y='\(h - 5)' font-size='8' fill='#888' text-anchor='end'>\(last)</text>
+        </svg>
+        """
+    }
+
+    /// 发作频次（近 12 个月，div 条形——打印也清楚）
+    private static func htmlMonthlyFlares(flares: [Flare]) -> String {
+        let cal = Calendar.current
+        let now = Date()
+        var bars: [(String, Int)] = []
+        let f = DateFormatter(); f.dateFormat = L("MMM", "M月")
+        for back in stride(from: 11, through: 0, by: -1) {
+            guard let ms = cal.date(byAdding: .month, value: -back, to: cal.startOfDay(for: now)),
+                  let range = cal.dateInterval(of: .month, for: ms) else { continue }
+            bars.append((f.string(from: ms), flares.filter { $0.startDate >= range.start && $0.startDate < range.end }.count))
+        }
+        guard bars.contains(where: { $0.1 > 0 }) else { return "" }
+        let maxC = max(bars.map { $0.1 }.max() ?? 1, 1)
+        var cells = ""
+        for (label, c) in bars {
+            let hPct = Double(c) / Double(maxC) * 100
+            let color = c == 0 ? "#e8e8e8" : "#D2423D"
+            cells += """
+            <div style="flex:1;text-align:center">
+              <div style="height:64px;display:flex;align-items:flex-end;justify-content:center">
+                <div style="width:60%;height:\(String(format: "%.0f", max(hPct, 3)))%;background:\(color);border-radius:2px"></div>
+              </div>
+              <div style="font-size:9px;color:#666;margin-top:3px">\(label)</div>
+              <div style="font-size:10px;font-weight:600;color:#333">\(c)</div>
+            </div>
+            """
+        }
+        return "<div style='display:flex;gap:4px;margin:8px 0'>\(cells)</div>"
+    }
+
     private static func buildHTML(store: Store, readings: [UricReading], flares: [Flare]) -> String {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
@@ -660,12 +729,34 @@ enum ClinicReportGenerator {
         if readings.isEmpty { readingRows = "<tr><td colspan=5 class=na>Not recorded</td></tr>" }
 
         var flareRows = ""
-        for f in flares.prefix(10) {
+        for f in flares {
             let med = f.tookMedsToday.map { $0 ? L("Took", "吃了") : L("Didn't take", "没吃") } ?? L("Not logged", "未记")
             let pk = f.tookPainkiller.map { L("Painkiller \($0 ? "✓" : "✗")", "止痛药\($0 ? "✓" : "✗")") } ?? ""
             flareRows += "<tr><td>\(df.string(from: f.startDate))</td><td>\(f.joints.joined(separator: "/"))</td><td>\(f.painPeak)/10</td><td>\(f.canWalk ? "Yes" : "No")</td><td>\(med) \(pk)</td></tr>"
         }
         if flares.isEmpty { flareRows = "<tr><td colspan=5 class=na>Not recorded</td></tr>" }
+
+        // 诱因排行（与 TriggerRankView / PDF 报告同源逻辑：每次发作前 72h 的饮食项）
+        var triggerCounts: [String: Int] = [:]
+        for flare in flares {
+            guard let win = Calendar.current.date(byAdding: .hour, value: -72, to: flare.startDate) else { continue }
+            let days = store.foodDays.filter { $0.day >= win && $0.day <= flare.startDate && !$0.noTriggerToday }
+            for d in days {
+                for item in d.items + d.scenes {
+                    triggerCounts[item, default: 0] += 1
+                }
+            }
+        }
+        let topTriggers = triggerCounts.sorted { $0.value > $1.value }.prefix(5)
+        let triggerHtml: String
+        if topTriggers.isEmpty {
+            triggerHtml = "<p class=na>\(L("Not enough food + flare data yet — needs both kinds of entry.", "饮食与发作的配对数据还不够——两类记录都要有。"))</p>"
+        } else {
+            let tRows = topTriggers.map { (key, cnt) -> String in
+                "<tr><td>\(foodDisplayName(key))</td><td>\(cnt)</td><td>\(L("in the 72h before that many flares", "在该次数发作前 72 小时内出现过"))</td></tr>"
+            }.joined()
+            triggerHtml = "<table><tr><th>\(L("Food", "食物"))</th><th>\(L("Count", "次数"))</th><th>\(L("Meaning", "含义"))</th></tr>\(tRows)</table>"
+        }
 
         // A1 第4节：生活方式（饮水/饮食/入睡/体重）
         let recordedWater = store.waterDays.filter { $0.provenance == .recorded && !$0.cups.isEmpty }
@@ -722,21 +813,25 @@ enum ClinicReportGenerator {
           <div><b>\(adherence)</b><span>\(T("Adherence (30d)", "服药依从率 (30d)"))</span></div>
           <div><b>\(store.lastReading.map { String(format: "%.1f", $0.valueMgDl) } ?? "—")</b><span>\(T("Latest urate mg/dL", "最近尿酸 mg/dL"))</span></div>
         </div>
-        <h2>1. \(T("Uric Acid Labs (incl. creatinine)", "尿酸化验（含肌呅）")) <span class=tag>\(T("Target &lt;6.0 mg/dL / 360 µmol/L", "目标 &lt;6.0 mg/dL / 360 µmol/L"))</span></h2>
+        \(svgUricChart(readings: readings, unitIsUmol: store.meta.unitIsUmol))
+        <h2>1. \(T("Uric Acid Labs (incl. creatinine)", "尿酸化验（含肌酐）")) <span class=tag>\(T("Target &lt;6.0 mg/dL / 360 µmol/L", "目标 &lt;6.0 mg/dL / 360 µmol/L"))</span></h2>
         <table><tr><th>\(T("Date", "日期"))</th><th>\(T("Urate mg/dL", "尿酸 mg/dL"))</th><th>\(T("Creatinine", "肌酐"))</th><th>\(T("Status", "判定"))</th><th>\(T("Source", "来源"))</th></tr>\(readingRows)</table>
-        <h2>2. \(T("Flare History (last 10)", "发作史（最近 10 次）"))</h2>
+        <h2>2. \(T("Flare history (all episodes)", "发作史（全部记录）"))</h2>
+        \(htmlMonthlyFlares(flares: flares))
         <table><tr><th>\(T("Date", "日期"))</th><th>\(T("Joints", "部位"))</th><th>\(T("Peak", "疼痛峰值"))</th><th>\(T("Walking", "行走"))</th><th>\(T("Meds", "用药"))</th></tr>\(flareRows)</table>
-        <h2>3. \(T("Medication & Adherence", "用药与依从性"))</h2>
+        <h2>3. \(T("Foods common before flares", "发作前共同出现的饮食"))</h2>
+        \(triggerHtml)
+        <h2>4. \(T("Medication & Adherence", "用药与依从性"))</h2>
         <p>\(T("Current medication", "当前用药"))：<b>\(medLine)</b><br>
         \(T("30-day adherence", "近 30 天依从率"))：<b>\(adherence)</b><span class=tag>\(T("backfills marked", "补记已标注"))</span></p>
-        <h2>4. \(T("Lifestyle (daily log summary)", "生活方式（日常记录汇总）"))</h2>
+        <h2>5. \(T("Lifestyle (daily log summary)", "生活方式（日常记录汇总）"))</h2>
         <p>
         \(T("Hydration", "饮水"))：\(T("on-goal \(onTargetDays) d / auto-avg \(estimatedWater.count) d", "达标 \(onTargetDays) 天 / 沿用均值 \(estimatedWater.count) 天"))<span class=tag>\(T("auto=weekly average, not measured", "沿用=按上周平均自动填，非实测"))</span><br>
         \(T("Diet", "饮食"))：\(T("high-purine logged \(redTouchDays) d · clean \(noTriggerDays) d", "登记高嘌呤 \(redTouchDays) 天 · 明确未碰 \(noTriggerDays) 天"))<br>
         \(T("Sleep", "入睡"))：\(sleepLine)<br>
         \(T("Weight", "体重"))：\(weightLine)
         </p>
-        <h2>5. \(T("Details (last 30 days)", "细节（近 30 天）"))</h2>
+        <h2>6. \(T("Details (last 30 days)", "细节（近 30 天）"))</h2>
         <table><tr><th>\(T("Metric", "指标"))</th><th>\(T("Value", "数值"))</th><th>\(T("Note", "说明"))</th></tr>
         <tr><td>\(T("Flares", "发作次数"))</td><td>\(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.count)</td><td>\(T("worst pain \(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.map(\.painPeak).max() ?? 0)/10", "最痛 \(store.flares.filter { $0.startDate >= Calendar.current.date(byAdding: .day, value: -30, to: Date())! }.map(\.painPeak).max() ?? 0)/10"))</td></tr>
         <tr><td>\(T("Water on-goal rate", "饮水达标率"))</td><td>\(Int(Double(onTargetDays) / Double(max(recordedWater.count, 1)) * 100))%</td><td>\(T("\(onTargetDays)/\(recordedWater.count) recorded days", "实测 \(recordedWater.count) 天中达标 \(onTargetDays) 天"))</td></tr>
