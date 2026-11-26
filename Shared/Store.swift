@@ -396,6 +396,7 @@ final class Store: ObservableObject {
 
     private init() {
         load()
+        restoreFromBackupIfEmpty()   // 2026-11-27：UserDefaults 被清但 Documents 还有备份 → 回灌
         migrateV10IfNeeded()
         rollWaterDayIfNeeded()   // A2：过凌晨自动归档重置（打开时惰性执行）
         askWaterAutoFillIfNeeded()
@@ -422,6 +423,7 @@ final class Store: ObservableObject {
         // 健哥11-21令：日常食物表+自定义场景（跟meta一起走meta key？不——独立key防单块坏连坐）
         if let d = try? JSONEncoder().encode(meta.dailyFoods) { defaults.set(d, forKey: "ur.dailyFoods") }
         if let d = try? JSONEncoder().encode(meta.customScenes) { defaults.set(d, forKey: "ur.customScenes") }
+        saveBackup()   // 2026-11-27：同步落一份到 Documents，防容器被清
     }
 
     private func load() {
@@ -525,6 +527,93 @@ final class Store: ObservableObject {
         review = ReviewSchedule()
         recall = RecallAlarm()
         meta = AppMeta()   // onboardingDone=false → RootView 自动回 onboarding
+        // 2026-11-27：备份文件必须一起删，否则下次启动会被 restoreFromBackupIfEmpty 回灌
+        try? FileManager.default.removeItem(at: backupURL)
+    }
+
+    // MARK: - 本地文件备份（2026-11-27）
+    //
+    // 背景：健哥反馈「每次更新都覆盖手机记录」。逐行查过 —— 代码里没有清数据的逻辑，
+    // 启动流程（rollWaterDay / migrateV10 / askWaterAutoFill）都只增不删。
+    // 最可能是版本号从 12.1 降到 1.0 时被 iOS 当成降级、重建了 App 容器。
+    // 但 UserDefaults 一旦被系统清掉就无从恢复，所以额外在 Documents 留一份 JSON：
+    // 启动时如果 UserDefaults 全空、而备份文件里有数据，自动回灌。
+    //
+    // 注意：删除 App 会连 Documents 一起删，这层保险只防「容器被重建 / 数据被误清」。
+
+    private var backupURL: URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("uricnote-backup.json")
+    }
+
+    private struct BackupSnapshot: Codable {
+        var savedAt: Date
+        var readings: [UricReading] = []
+        var flares: [Flare] = []
+        var medPlans: [MedPlan] = []
+        var medLogs: [MedLog] = []
+        var waterDays: [WaterDay] = []
+        var sleepLogs: [SleepLog] = []
+        var foodDays: [FoodDayLog] = []
+        var weightLogs: [WeightLog] = []
+        var sexualLogs: [SexualActivityLog] = []
+        var confirmedPainFreeDays: Set<Date> = []
+        var profile = HealthProfile()
+        var review = ReviewSchedule()
+        var recall = RecallAlarm()
+        var meta = AppMeta()
+    }
+
+    private func saveBackup() {
+        let snap = BackupSnapshot(
+            savedAt: Date(),
+            readings: readings,
+            flares: flares,
+            medPlans: medPlans,
+            medLogs: medLogs,
+            waterDays: waterDays,
+            sleepLogs: sleepLogs,
+            foodDays: foodDays,
+            weightLogs: weightLogs,
+            sexualLogs: sexualLogs,
+            confirmedPainFreeDays: confirmedPainFreeDays,
+            profile: profile,
+            review: review,
+            recall: recall,
+            meta: meta)
+        if let d = try? JSONEncoder().encode(snap) {
+            try? d.write(to: backupURL, options: .atomic)
+        }
+    }
+
+    /// UserDefaults 全空（疑似容器被清）而备份文件有数据时自动回灌
+    private func restoreFromBackupIfEmpty() {
+        let empty = readings.isEmpty && flares.isEmpty && waterDays.isEmpty
+            && sleepLogs.isEmpty && foodDays.isEmpty && medLogs.isEmpty
+            && weightLogs.isEmpty && sexualLogs.isEmpty && !profile.hasContent
+        guard empty else { return }
+        guard let d = try? Data(contentsOf: backupURL),
+              let snap = try? JSONDecoder().decode(BackupSnapshot.self, from: d) else { return }
+
+        let hasData = !snap.readings.isEmpty || !snap.flares.isEmpty || !snap.waterDays.isEmpty
+            || !snap.sleepLogs.isEmpty || !snap.foodDays.isEmpty || !snap.weightLogs.isEmpty
+            || snap.profile.hasContent
+        guard hasData else { return }
+
+        readings = snap.readings
+        flares = snap.flares
+        medPlans = snap.medPlans
+        medLogs = snap.medLogs
+        waterDays = snap.waterDays
+        sleepLogs = snap.sleepLogs
+        foodDays = snap.foodDays
+        weightLogs = snap.weightLogs
+        sexualLogs = snap.sexualLogs
+        confirmedPainFreeDays = snap.confirmedPainFreeDays
+        profile = snap.profile
+        review = snap.review
+        recall = snap.recall
+        meta = snap.meta
     }
 
     private func last7RecordedWaterDays(excludingToday: Bool) -> [WaterDay] {

@@ -68,6 +68,24 @@ struct TestDataView: View {
                        "每点一次生成一整天的合理数据，日期往前推一天。这些是示例记录，不是真实数据——上架前关掉这个入口。"))
             }
 
+            // 2026-11-27：分类型计数——健哥反馈"只看到喝水入睡尿酸变了"，
+            // 因为饮食页只看今天、药物使用要打卡、发作概率低。
+            // 把每一类的实际条数摊开，生成了什么一眼可见。
+            Section {
+                statRow(L("Lab values", "化验值"), store.readings.count)
+                statRow(L("Flares", "发作记录"), store.flares.count)
+                statRow(L("Food logs", "饮食记录"), store.foodDays.count)
+                statRow(L("Water days", "喝水记录"), store.waterDays.count)
+                statRow(L("Sleep nights", "入睡记录"), store.sleepLogs.count)
+                statRow(L("Weight entries", "体重记录"), store.weightLogs.count)
+                statRow(L("Medication check-ins", "用药打卡"), store.medLogs.count)
+            } header: {
+                Text(L("What is actually in the store", "已存入的数据"))
+            } footer: {
+                Text(L("Food / water / sleep show on the Trends heat grid; flares show under the pain-free counter; labs feed the uric acid chart.",
+                       "饮食/喝水/入睡会进趋势页的坚持热力格；发作会改变「无痛天数」；化验值进尿酸曲线。"))
+            }
+
             Section {
                 Toggle(isOn: Binding(
                     get: { UserDefaults.standard.bool(forKey: TestFlags.proForceUnlockKey) },
@@ -120,12 +138,41 @@ struct TestDataView: View {
     // MARK: 生成
 
     private func generate(days: Int) {
+        let flaresBefore = store.flares.count
+        let weightBefore = store.weightLogs.count
         var cursor = nextDay
         for _ in 0..<days {
             fillOneDay(cursor)
             cursor = cal.date(byAdding: .day, value: -1, to: cursor) ?? cursor
         }
-        toast = L("Added \(days) day(s)", "已生成 \(days) 天")
+        // 2026-11-27：保底——7 天里一次发作都没有的话，趋势页看不出任何变化。
+        // 补一次「中等程度」的发作到本批中间那天，保证可观测。
+        if days >= 7 && store.flares.count == flaresBefore {
+            let mid = cal.date(byAdding: .day, value: -(days / 2), to: nextDay) ?? nextDay
+            store.flares.append(
+                Flare(startDate: cal.date(byAdding: .hour, value: 3, to: mid) ?? mid,
+                      endDate: nil, joints: ["脚趾"], painPeak: 6,
+                      canWalk: false, workImpact: 1, workImpactNote: nil,
+                      tookMedsToday: nil, tookPainkiller: true,
+                      painkillerName: nil, triggerNotes: nil)
+            )
+        }
+        if days >= 7 && store.weightLogs.count == weightBefore {
+            let mid = cal.date(byAdding: .day, value: -(days / 2), to: nextDay) ?? nextDay
+            store.weightLogs.append(WeightLog(date: mid, kg: (Double.random(in: 74...79) * 10).rounded() / 10))
+        }
+        toast = L("Added \(days) day(s) — labs \(store.readings.count) · flares \(store.flares.count) · food \(store.foodDays.count)",
+                  "已生成 \(days) 天 —— 化验 \(store.readings.count) · 发作 \(store.flares.count) · 饮食 \(store.foodDays.count)")
+    }
+
+    private func statRow(_ title: String, _ value: Int) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text("\(value)")
+                .font(.body.weight(.semibold))
+                .foregroundColor(value == 0 ? .secondary : .brand)
+        }
     }
 
     private func fillOneDay(_ day: Date) {
@@ -176,8 +223,8 @@ struct TestDataView: View {
             )
         }
 
-        // ⑤ 发作：8% 概率
-        if Int.random(in: 0..<100) < 8 {
+        // ⑤ 发作：12% 概率（原 8% 太低，加 7 天常常一次都没触发）
+        if Int.random(in: 0..<100) < 12 {
             let joints = ["脚趾", "脚踝", "膝盖", "手指"]
             store.flares.append(
                 Flare(startDate: cal.date(byAdding: .hour, value: 3, to: day) ?? day,
@@ -194,10 +241,25 @@ struct TestDataView: View {
             )
         }
 
-        // ⑥ 体重：每 7 天一条
-        if Int.random(in: 0..<7) == 0 {
+        // ⑥ 体重：每 5 天一条（原 1/7，加 7 天常常一条都没有）
+        if Int.random(in: 0..<5) == 0 {
             let kg = (Double.random(in: 74...79) * 10).rounded() / 10
             store.weightLogs.append(WeightLog(date: day, kg: kg))
+        }
+
+        // ⑦ 用药打卡：有在用方案就按次生成（80% 吃了）
+        //    2026-11-27：原来完全没生成，导致趋势页「药物使用（近 30 天）」一直空白、
+        //    「记录坚持」热力格也少一类颜色。
+        for plan in store.medPlans where plan.active {
+            for slot in 1...max(plan.timesPerDay, 1) {
+                let taken = Int.random(in: 0..<10) < 8
+                store.medLogs.append(
+                    MedLog(date: cal.date(byAdding: .hour, value: 7 + slot * 5, to: day) ?? day,
+                           planRef: plan.id,
+                           taken: taken,
+                           slot: slot)
+                )
+            }
         }
     }
 }
