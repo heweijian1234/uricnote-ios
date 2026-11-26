@@ -7,10 +7,10 @@ import Charts
 struct RecordListView: View {
     @ObservedObject var store = Store.shared
 
-    /// 测试数据入口开关（2026-11-26 健哥令：手工攒 90 天太慢）。
-    /// 🔴 上架前改成 false，入口即从记录页消失；TestDataView 文件可留着不动。
+    /// 测试入口开关（2026-11-26 健哥令：手工攒 90 天太慢）。
+    /// 🔴 上架前把 TestFlags.enabled 改成 false，入口即消失、Pro 强制解锁同时失效。
     /// 注意不能用 #if DEBUG —— CI 出的是 Release 包，DEBUG 块在 TestFlight 里不存在。
-    private let showsTestTools = true
+    private let showsTestTools = TestFlags.enabled
 
     var body: some View {
         NavigationView {
@@ -1101,7 +1101,10 @@ struct DailyFoodPickerSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .searchable(text: $query, prompt: L("Search foods", "搜食物"))
+            // 2026-11-26：搜索框常驻显示（原默认行为要下拉才露出，等于看不见）
+            .searchable(text: $query,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: L("Search foods", "搜食物"))
             .navigationTitle(L("Manage daily foods", "管理日常食物"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -1,5 +1,16 @@
 import SwiftUI
 
+// MARK: - 测试开关（一处控制全部测试能力）
+
+enum TestFlags {
+    /// 控制：记录页「测试」入口 + Pro 强制解锁 是否可用。
+    /// 🔴 上架前改成 false —— 入口消失，且强制解锁立即失效（即使 UserDefaults 里还留着开关值）。
+    static let enabled = true
+
+    /// Pro 强制解锁的 UserDefaults key（仅 TestFlags.enabled 为 true 时被读取）
+    static let proForceUnlockKey = "ur.proForceUnlocked"
+}
+
 // MARK: - 测试数据生成（健哥 2026-11-26 令：手工攒 90 天数据太慢，要一键铺）
 //
 // 设计要点：
@@ -9,6 +20,7 @@ import SwiftUI
 
 struct TestDataView: View {
     @ObservedObject var store = Store.shared
+    @EnvironmentObject private var pro: ProStore
     @State private var toast: String?
 
     private let cal = Calendar.current
@@ -54,6 +66,26 @@ struct TestDataView: View {
             } footer: {
                 Text(L("Each tap fills one whole day with plausible data and moves the date back one day. These are sample records, not real ones — turn this off before release.",
                        "每点一次生成一整天的合理数据，日期往前推一天。这些是示例记录，不是真实数据——上架前关掉这个入口。"))
+            }
+
+            Section {
+                Toggle(isOn: Binding(
+                    get: { UserDefaults.standard.bool(forKey: TestFlags.proForceUnlockKey) },
+                    set: { on in
+                        UserDefaults.standard.set(on, forKey: TestFlags.proForceUnlockKey)
+                        Task { await pro.refresh() }   // 立即生效，不用杀 App
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L("Unlock Pro (testing)", "解锁 Pro（测试用）"))
+                        Text(L("Skips StoreKit so you can test export, full history and trigger ranking without paying. Does not create a real purchase.",
+                               "跳过购买直接解锁，用来测导出、全部历史、诱因排行。不会产生真实购买记录。"))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } header: {
+                Text("Pro")
             }
 
             Section {

@@ -34,6 +34,12 @@ final class ProStore: ObservableObject {
     }
 
     func refresh() async {
+        // 2026-11-26：测试用强制解锁。只在 TestFlags.enabled 为 true 时生效，
+        // 上架前把 TestFlags.enabled 改 false 即整体失效（不依赖删除 UserDefaults）。
+        if TestFlags.enabled, UserDefaults.standard.bool(forKey: TestFlags.proForceUnlockKey) {
+            isPro = true
+            return
+        }
         var owned = false
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
