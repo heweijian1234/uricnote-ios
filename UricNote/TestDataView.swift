@@ -6,7 +6,8 @@ enum TestFlags {
     /// 控制：记录页「测试」入口 + Pro 强制解锁 是否可用。
     /// 🔴 时序（健哥 2026-11-27 点破）：装机验证阶段必须开着（测试数据是验证趋势/热力格/PDF
     /// 的前提），**提审前最后一步才改 false** 再出提审包——不是提前关好等提审。
-    static let enabled = true
+    /// 2026-11-27 20:xx 健哥确认验证通过 → 本版改 false = 提审包（入口消失+Pro 全锁，无后门）。
+    static let enabled = false
 
     /// Pro 强制解锁的 UserDefaults key（仅 TestFlags.enabled 为 true 时被读取）
     static let proForceUnlockKey = "ur.proForceUnlocked"
