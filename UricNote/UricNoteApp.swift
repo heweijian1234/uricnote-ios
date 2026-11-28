@@ -28,19 +28,25 @@ struct RootView: View {
             if !store.meta.onboardingDone && !UserDefaults.standard.bool(forKey: "ur.onboarded.v2") {
                 OnboardingView()
             } else {
-                TabView(selection: $tab) {
-                    DashboardView()
-                        .tabItem { Label(L("Dashboard", "仪表盘"), systemImage: "speedometer") }
-                        .tag(0)
-                    RecordListView()
-                        .tabItem { Label(L("Records", "记录"), systemImage: "square.and.pencil") }
-                        .tag(1)
-                    TrendView()
-                        .tabItem { Label(L("Trends", "趋势"), systemImage: "chart.xyaxis.line") }
-                        .tag(2)
-                    LearnView()
-                        .tabItem { Label(L("Learn", "了解"), systemImage: "book") }
-                        .tag(3)
+                // 🔴S7.9 标配（2026-11-28 健哥令）：左右滑切换页面——.page 翻页样式+自绘底部导航条（NotaryTrack f88d42d 范本）
+                VStack(spacing: 0) {
+                    TabView(selection: $tab) {
+                        DashboardView().tag(0)
+                        RecordListView().tag(1)
+                        TrendView().tag(2)
+                        LearnView().tag(3)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+
+                    HStack(spacing: 0) {
+                        tabBarButton(icon: "speedometer", label: L("Dashboard", "仪表盘"), idx: 0)
+                        tabBarButton(icon: "square.and.pencil", label: L("Records", "记录"), idx: 1)
+                        tabBarButton(icon: "chart.xyaxis.line", label: L("Trends", "趋势"), idx: 2)
+                        tabBarButton(icon: "book", label: L("Learn", "了解"), idx: 3)
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 2)
+                    .background(.bar)
                 }
                 .onAppear {
                     if !hasLaunchedOnce { hasLaunchedOnce = true }
@@ -57,6 +63,20 @@ struct RootView: View {
             if phase == .background {
                 store.save()   // 进后台即全量落盘——杀进程不丢
             }
+        }
+    }
+
+    /// 🔴S7.9 标配：自绘底部导航按钮（滑动切页配对件）
+    private func tabBarButton(icon: String, label: String, idx: Int) -> some View {
+        Button {
+            withAnimation { tab = idx }
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: icon).font(.system(size: 20))
+                Text(label).font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundColor(tab == idx ? .brand : .secondary)
         }
     }
 }
